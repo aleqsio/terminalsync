@@ -439,9 +439,9 @@ function printHelp() {
 Usage: terminalsync <command>
 
 Commands:
-  share            Start a new terminal session
-  connect          Show QR code to connect from mobile
-  config           Configure tunnel, host, and port
+  share            Share current terminal on a secure tunnel URL
+  connect          Show QR code to connect from any device
+  config           Configure tunnel and port
   list             List active sessions
   attach <id>      Attach to an existing session
   help             Show this help message
