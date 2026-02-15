@@ -1,7 +1,8 @@
 node_modules/
-dist/
 .expo/
 ios/Pods/
 *.tsbuildinfo
 *.tar.gz
-.bundle-stage/
+
+# Ignore dist everywhere except cli/ (pre-built, committed)
+landing/dist/

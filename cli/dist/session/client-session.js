@@ -1,0 +1,336 @@
+import { parseClientMessage } from "../protocol/messages.js";
+import { spawnAttach, captureScrollback, detachGracefully, } from "../tmux/attach.js";
+export class ClientSession {
+    ws;
+    id;
+    state = "BROWSING";
+    config;
+    store;
+    tmux;
+    // When attached to a managed session
+    attachedSession = null;
+    dataListener = null;
+    exitListener = null;
+    // When attached to a tmux session (legacy path)
+    tmuxPty = null;
+    attachedTarget = null;
+    constructor(ws, config, store, tmux) {
+        this.ws = ws;
+        this.id = crypto.randomUUID();
+        this.config = config;
+        this.store = store;
+        this.tmux = tmux;
+        ws.on("message", (data, isBinary) => {
+            if (isBinary)
+                return;
+            try {
+                const msg = parseClientMessage(data.toString());
+                this.handleMessage(msg);
+            }
+            catch (err) {
+                const message = err instanceof Error ? err.message : String(err);
+                this.sendJSON({
+                    type: "error",
+                    seq: 0,
+                    payload: { code: "PARSE_ERROR", message },
+                });
+            }
+        });
+        ws.on("close", () => this.cleanup());
+        ws.on("error", () => this.cleanup());
+    }
+    handleMessage(msg) {
+        switch (msg.type) {
+            case "list_sessions":
+                this.handleListSessions(msg.seq);
+                break;
+            case "create_session":
+                this.handleCreateSession(msg.seq, msg.payload.name, msg.payload.cols, msg.payload.rows);
+                break;
+            case "attach":
+                this.handleAttach(msg.seq, msg.payload.target, msg.payload.cols, msg.payload.rows);
+                break;
+            case "input":
+                this.handleInput(msg.seq, msg.payload.data);
+                break;
+            case "resize":
+                this.handleResize(msg.seq, msg.payload.cols, msg.payload.rows);
+                break;
+            case "detach":
+                this.handleDetach(msg.seq);
+                break;
+        }
+    }
+    async handleListSessions(seq) {
+        try {
+            const managed = this.store.list().map((s) => ({
+                id: s.id,
+                name: s.name,
+                status: s.getStatus(),
+                attachedClients: s.getAttachedClientCount(),
+                source: s.source,
+            }));
+            const tmuxSessions = await this.tmux.listSessions();
+            const sessions = [...managed, ...tmuxSessions];
+            this.sendJSON({
+                type: "session_list",
+                seq,
+                payload: { sessions },
+            });
+        }
+        catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            this.sendJSON({
+                type: "error",
+                seq,
+                payload: { code: "LIST_ERROR", message },
+            });
+        }
+    }
+    handleCreateSession(seq, name, cols, rows) {
+        try {
+            const session = this.store.create({
+                name,
+                shell: this.config.defaultShell,
+                cols,
+                rows,
+            });
+            this.sendJSON({
+                type: "session_created",
+                seq,
+                payload: { id: session.id, name: session.name },
+            });
+        }
+        catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            this.sendJSON({
+                type: "error",
+                seq,
+                payload: { code: "CREATE_FAILED", message },
+            });
+        }
+    }
+    async handleAttach(seq, target, cols, rows) {
+        if (this.state === "ATTACHED") {
+            this.sendJSON({
+                type: "error",
+                seq,
+                payload: {
+                    code: "ALREADY_ATTACHED",
+                    message: "Already attached to a session. Detach first.",
+                },
+            });
+            return;
+        }
+        // Route: tmux session (target starts with "tmux:")
+        if (target.startsWith("tmux:")) {
+            await this.attachTmux(seq, target.slice(5), cols, rows);
+            return;
+        }
+        // Route: managed session (target is a UUID)
+        const session = this.store.get(target);
+        if (!session) {
+            this.sendJSON({
+                type: "error",
+                seq,
+                payload: { code: "SESSION_NOT_FOUND", message: `No session with id: ${target}` },
+            });
+            return;
+        }
+        if (session.hasExited()) {
+            this.sendJSON({
+                type: "error",
+                seq,
+                payload: { code: "SESSION_EXITED", message: "Session has already exited" },
+            });
+            return;
+        }
+        this.attachedSession = session;
+        session.attachClient(this.id);
+        this.state = "ATTACHED";
+        // Owner sets the size; other clients adopt the session's size
+        if (session.isOwner(this.id)) {
+            session.resize(this.id, cols, rows);
+        }
+        // Send buffered output so reconnecting clients see prior content
+        const buffered = session.getBufferedOutput();
+        if (buffered) {
+            this.ws.send(Buffer.from(buffered), { binary: true });
+        }
+        // Subscribe to live output
+        this.dataListener = (data) => {
+            if (this.ws.readyState === this.ws.OPEN) {
+                this.ws.send(Buffer.from(data), { binary: true });
+            }
+        };
+        this.exitListener = (exitCode) => {
+            if (this.state === "ATTACHED") {
+                this.detachFromManaged();
+                this.sendJSON({
+                    type: "detached",
+                    seq: 0,
+                    payload: {
+                        reason: "session_exit",
+                        message: `Process exited with code ${exitCode}`,
+                    },
+                });
+            }
+        };
+        session.on("data", this.dataListener);
+        session.on("exit", this.exitListener);
+        // Tell the client the session's fixed size
+        this.sendJSON({
+            type: "attached",
+            seq,
+            payload: { target, cols: session.cols, rows: session.rows },
+        });
+    }
+    async attachTmux(seq, tmuxTarget, cols, rows) {
+        try {
+            const scrollback = await captureScrollback(tmuxTarget, this.config.defaultScrollbackLines);
+            const ptyProcess = spawnAttach(tmuxTarget, cols, rows);
+            this.tmuxPty = ptyProcess;
+            this.attachedTarget = `tmux:${tmuxTarget}`;
+            this.state = "ATTACHED";
+            if (scrollback) {
+                this.ws.send(Buffer.from(scrollback), { binary: true });
+            }
+            ptyProcess.onData((data) => {
+                if (this.ws.readyState === this.ws.OPEN) {
+                    this.ws.send(Buffer.from(data), { binary: true });
+                }
+            });
+            ptyProcess.onExit(({ exitCode }) => {
+                if (this.state === "ATTACHED") {
+                    this.state = "BROWSING";
+                    this.tmuxPty = null;
+                    this.attachedTarget = null;
+                    this.sendJSON({
+                        type: "detached",
+                        seq: 0,
+                        payload: {
+                            reason: "session_exit",
+                            message: `Process exited with code ${exitCode}`,
+                        },
+                    });
+                }
+            });
+            this.sendJSON({
+                type: "attached",
+                seq,
+                payload: { target: `tmux:${tmuxTarget}`, cols, rows },
+            });
+        }
+        catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            this.sendJSON({
+                type: "error",
+                seq,
+                payload: { code: "ATTACH_FAILED", message },
+            });
+        }
+    }
+    handleInput(seq, data) {
+        if (this.state !== "ATTACHED") {
+            this.sendJSON({
+                type: "error",
+                seq,
+                payload: { code: "NOT_ATTACHED", message: "Not attached to any session" },
+            });
+            return;
+        }
+        if (this.attachedSession) {
+            this.attachedSession.write(data);
+        }
+        else if (this.tmuxPty) {
+            this.tmuxPty.write(data);
+        }
+    }
+    handleResize(seq, cols, rows) {
+        if (this.state !== "ATTACHED") {
+            this.sendJSON({
+                type: "error",
+                seq,
+                payload: { code: "NOT_ATTACHED", message: "Not attached to any session" },
+            });
+            return;
+        }
+        if (this.attachedSession) {
+            this.attachedSession.resize(this.id, cols, rows);
+        }
+        else if (this.tmuxPty) {
+            this.tmuxPty.resize(cols, rows);
+        }
+    }
+    handleDetach(seq) {
+        if (this.state !== "ATTACHED") {
+            this.sendJSON({
+                type: "error",
+                seq,
+                payload: { code: "NOT_ATTACHED", message: "Not attached to any session" },
+            });
+            return;
+        }
+        if (this.attachedSession) {
+            this.detachFromManaged();
+        }
+        else if (this.tmuxPty) {
+            this.detachFromTmux();
+        }
+        this.sendJSON({
+            type: "detached",
+            seq,
+            payload: { reason: "client_request" },
+        });
+    }
+    detachFromManaged() {
+        if (this.attachedSession) {
+            if (this.dataListener) {
+                this.attachedSession.removeListener("data", this.dataListener);
+            }
+            if (this.exitListener) {
+                this.attachedSession.removeListener("exit", this.exitListener);
+            }
+            const ownerLeft = this.attachedSession.detachClient(this.id);
+            if (ownerLeft) {
+                this.store.remove(this.attachedSession.id);
+            }
+        }
+        this.attachedSession = null;
+        this.dataListener = null;
+        this.exitListener = null;
+        this.state = "BROWSING";
+    }
+    detachFromTmux() {
+        if (this.tmuxPty) {
+            detachGracefully(this.tmuxPty);
+            const pty = this.tmuxPty;
+            setTimeout(() => {
+                try {
+                    pty.kill();
+                }
+                catch {
+                    // already dead
+                }
+            }, 500);
+        }
+        this.tmuxPty = null;
+        this.attachedTarget = null;
+        this.state = "BROWSING";
+    }
+    cleanup() {
+        if (this.attachedSession) {
+            this.detachFromManaged();
+        }
+        if (this.tmuxPty) {
+            this.detachFromTmux();
+        }
+        this.state = "BROWSING";
+    }
+    sendJSON(msg) {
+        if (this.ws.readyState === this.ws.OPEN) {
+            this.ws.send(JSON.stringify(msg));
+        }
+    }
+}
+//# sourceMappingURL=client-session.js.map

@@ -1,0 +1,30 @@
+import type { WebSocket } from "ws";
+import type { Config } from "../config.js";
+import type { ManagedSessionStore } from "./managed-session-store.js";
+import type { TmuxProvider } from "../tmux/tmux-provider.js";
+export declare class ClientSession {
+    readonly ws: WebSocket;
+    readonly id: string;
+    private state;
+    private config;
+    private store;
+    private tmux;
+    private attachedSession;
+    private dataListener;
+    private exitListener;
+    private tmuxPty;
+    private attachedTarget;
+    constructor(ws: WebSocket, config: Config, store: ManagedSessionStore, tmux: TmuxProvider);
+    private handleMessage;
+    private handleListSessions;
+    private handleCreateSession;
+    private handleAttach;
+    private attachTmux;
+    private handleInput;
+    private handleResize;
+    private handleDetach;
+    private detachFromManaged;
+    private detachFromTmux;
+    cleanup(): void;
+    private sendJSON;
+}
