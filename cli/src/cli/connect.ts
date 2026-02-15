@@ -265,6 +265,7 @@ async function cmdAttach(targetId: string): Promise<void> {
 }
 
 async function cmdShare(): Promise<void> {
+  if (process.env.TERMINALSYNC_SESSION) return;
   if (!(await ensureServer())) fallbackShell();
   const ws = openWs();
   const cols = process.stdout.columns || 80;

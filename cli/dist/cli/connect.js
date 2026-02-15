@@ -238,6 +238,8 @@ async function cmdAttach(targetId) {
     });
 }
 async function cmdShare() {
+    if (process.env.TERMINALSYNC_SESSION)
+        return;
     if (!(await ensureServer()))
         fallbackShell();
     const ws = openWs();
