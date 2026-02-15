@@ -22,8 +22,12 @@ export default function TerminalView({
   const containerRef = useRef<HTMLDivElement>(null);
   const initRef = useRef(false);
 
+  const showTerminal = attachedId !== null;
+
+  // Only open xterm once the container is visible — opening in a display:none
+  // container breaks character measurement and corrupts layout on reload.
   useEffect(() => {
-    if (initRef.current || !containerRef.current) return;
+    if (!showTerminal || initRef.current || !containerRef.current) return;
     initRef.current = true;
 
     const term = new Terminal({
@@ -42,10 +46,15 @@ export default function TerminalView({
     termRef.current = term;
     term.onData(onData);
 
+    // Apply size immediately if already known
+    if (termSize && termSize.cols > 0 && termSize.rows > 0) {
+      term.resize(termSize.cols, termSize.rows);
+    }
+
     return () => {
       term.dispose();
     };
-  }, [termRef, onData]);
+  }, [showTerminal, termRef, onData, termSize]);
 
   // Resize terminal to match server's PTY dimensions
   useEffect(() => {
@@ -54,8 +63,6 @@ export default function TerminalView({
       term.resize(termSize.cols, termSize.rows);
     }
   }, [termSize, termRef]);
-
-  const showTerminal = attachedId !== null;
 
   const sendKey = useCallback(
     (seq: string) => {
