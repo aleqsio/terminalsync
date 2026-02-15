@@ -59,6 +59,60 @@ export default function TerminalView({
       term.textarea.setAttribute("autocomplete", "off");
     }
 
+    // Improved touch scrolling (port of xtermjs/xterm.js#5685).
+    // xterm 5.5.0's built-in touch handler only scrolls the viewport, which
+    // does nothing in alt-buffer apps (vim, less, tmux). We intercept touch
+    // events in the capture phase and, when in alt buffer, convert them to
+    // up/down key sequences — matching what the wheel handler already does.
+    const screenEl = term.element?.querySelector(".xterm-screen") as HTMLElement | null;
+    if (screenEl) {
+      let lastTouchY = 0;
+      let touchAccum = 0;
+
+      const getCellHeight = (): number => {
+        // Access internal render dimensions via the undocumented _core
+        const core = (term as any)._core;
+        return core?._renderService?.dimensions?.css?.cell?.height ?? 16;
+      };
+
+      const onTouchStart = (e: TouchEvent) => {
+        lastTouchY = e.touches[0].pageY;
+        touchAccum = 0;
+      };
+
+      const onTouchMove = (e: TouchEvent) => {
+        const currentY = e.touches[0].pageY;
+        const deltaY = lastTouchY - currentY;
+        lastTouchY = currentY;
+
+        if (deltaY === 0) return;
+
+        // Alt buffer (no scrollback) — send up/down arrow sequences
+        if (!term.buffer.normal.length || term.buffer.active.type !== "normal") {
+          e.preventDefault();
+          e.stopPropagation();
+
+          const cellHeight = getCellHeight();
+          touchAccum += deltaY;
+          const lines = Math.trunc(touchAccum / cellHeight);
+          if (lines === 0) return;
+          touchAccum -= lines * cellHeight;
+
+          const seq = lines < 0 ? "\x1b[A" : "\x1b[B";
+          for (let i = 0; i < Math.abs(lines); i++) {
+            onData(seq);
+          }
+          return;
+        }
+
+        // Normal buffer — let xterm's built-in handler scroll the viewport
+        // (don't stop propagation so xterm's touchmove listener fires)
+      };
+
+      screenEl.addEventListener("touchstart", onTouchStart, { capture: true, passive: true });
+      screenEl.addEventListener("touchmove", onTouchMove, { capture: true, passive: false });
+    }
+
     // Apply size immediately if already known
     if (termSize && termSize.cols > 0 && termSize.rows > 0) {
       term.resize(termSize.cols, termSize.rows);
