@@ -1,6 +1,14 @@
 #!/bin/sh
 set -e
 
+# TerminalSync installer
+# Usage: curl -fsSL https://raw.githubusercontent.com/aleqsio/terminalsync/main/install.sh | bash
+#
+# This script clones the repo, builds everything, and installs to ~/.terminalsync.
+# Requirements: node >= 18, npm, git
+
+REPO="https://github.com/aleqsio/terminalsync.git"
+BRANCH="main"
 INSTALL_DIR="$HOME/.terminalsync"
 REPO_DIR="$INSTALL_DIR/repo"
 BIN_DIR="$INSTALL_DIR/bin"
@@ -17,7 +25,10 @@ err()  { printf "\033[0;31mError: %s\033[0m\n" "$1" >&2; exit 1; }
 
 # --- Pre-checks ---
 
-info "Checking Node.js..."
+info "Checking dependencies..."
+
+command -v git >/dev/null 2>&1 || err "git is required but not found."
+
 if ! command -v node >/dev/null 2>&1; then
   err "Node.js is required but not found. Install Node.js >= 18 first."
 fi
@@ -26,49 +37,60 @@ NODE_MAJOR=$(node -e "process.stdout.write(String(process.versions.node.split('.
 if [ "$NODE_MAJOR" -lt 18 ]; then
   err "Node.js >= 18 required (found v$(node -v))"
 fi
-ok "Node.js v$(node -v | tr -d v) OK"
 
-# --- Install repo ---
+command -v npm >/dev/null 2>&1 || err "npm is required but not found."
+
+ok "node $(node -v), npm $(npm -v), git $(git --version | cut -d' ' -f3)"
+
+# --- Clone / update ---
 
 info "Setting up $INSTALL_DIR..."
 mkdir -p "$INSTALL_DIR" "$BIN_DIR"
 
 if [ -d "$REPO_DIR/.git" ]; then
-  info "Updating existing repo..."
+  info "Updating existing installation..."
   cd "$REPO_DIR"
-  git pull --ff-only
+  git fetch origin "$BRANCH"
+  git reset --hard "origin/$BRANCH"
 else
-  # If running from a git checkout, copy it; otherwise clone
-  SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-  if [ -f "$SCRIPT_DIR/package.json" ] && grep -q '"terminalsync"' "$SCRIPT_DIR/package.json" 2>/dev/null; then
-    info "Copying from local checkout..."
-    rm -rf "$REPO_DIR"
-    mkdir -p "$REPO_DIR"
-    # Copy everything except node_modules and dist
-    cd "$SCRIPT_DIR"
-    tar cf - --exclude node_modules --exclude dist --exclude .git . | (cd "$REPO_DIR" && tar xf -)
-  else
-    err "Please run install.sh from the terminalsync project directory."
-  fi
+  info "Cloning repository..."
+  rm -rf "$REPO_DIR"
+  git clone --depth 1 --branch "$BRANCH" "$REPO" "$REPO_DIR"
 fi
 
-# --- Build ---
+# --- Build server ---
 
-info "Installing dependencies..."
-cd "$REPO_DIR"
+info "Installing server dependencies..."
+cd "$REPO_DIR/cli"
 npm install
 
-info "Building..."
+info "Building server..."
+npm run build:server
+
+# --- Build web UI ---
+
+info "Installing web UI dependencies..."
+cd "$REPO_DIR/cli/web-ui"
+npm install
+
+info "Building web UI..."
 npm run build
+
+# --- Verify ---
+
+[ -f "$REPO_DIR/cli/dist/cli/connect.js" ] || err "Build failed: dist/cli/connect.js missing"
+[ -f "$REPO_DIR/cli/dist/web/index.html" ]  || err "Build failed: dist/web/index.html missing"
+
+ok "Build complete"
 
 # --- Wrapper script ---
 
 cat > "$WRAPPER" <<'WRAP'
 #!/bin/sh
-exec node "$HOME/.terminalsync/repo/dist/cli/connect.js" "$@"
+exec node "$HOME/.terminalsync/repo/cli/dist/cli/connect.js" "$@"
 WRAP
 chmod +x "$WRAPPER"
-ok "Created wrapper at $WRAPPER"
+ok "Created $WRAPPER"
 
 # --- Shell hook ---
 
@@ -81,14 +103,9 @@ $SENTINEL_END"
 
 install_hook() {
   RC_FILE="$1"
-  if [ ! -f "$RC_FILE" ]; then
-    return
-  fi
+  [ -f "$RC_FILE" ] || return 0
 
-  # Remove old manual terminalsync lines (TERMINALSYNC_TOKEN=test, etc.)
-  # and any existing sentinel block
   if grep -q "$SENTINEL_BEGIN" "$RC_FILE" 2>/dev/null; then
-    # Remove existing sentinel block
     sed -i.bak "/$SENTINEL_BEGIN/,/$SENTINEL_END/d" "$RC_FILE"
     rm -f "${RC_FILE}.bak"
     info "Replaced existing terminalsync block in $RC_FILE"
@@ -98,13 +115,8 @@ install_hook() {
   ok "Added shell hook to $RC_FILE"
 }
 
-# Detect shell rc files
-if [ -f "$HOME/.zshrc" ]; then
-  install_hook "$HOME/.zshrc"
-fi
-if [ -f "$HOME/.bashrc" ]; then
-  install_hook "$HOME/.bashrc"
-fi
+[ -f "$HOME/.zshrc" ]  && install_hook "$HOME/.zshrc"
+[ -f "$HOME/.bashrc" ] && install_hook "$HOME/.bashrc"
 
 # --- Done ---
 

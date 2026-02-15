@@ -3,3 +3,5 @@ dist/
 .expo/
 ios/Pods/
 *.tsbuildinfo
+*.tar.gz
+.bundle-stage/

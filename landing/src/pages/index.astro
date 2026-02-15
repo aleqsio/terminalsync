@@ -1,0 +1,863 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout>
+  <!-- Navigation -->
+  <nav id="main-nav" class="fixed top-0 left-0 right-0 z-50 border-b border-[var(--color-border)] transition-all duration-300" style="backdrop-filter: blur(12px); background: rgba(10, 10, 15, 0.8);">
+    <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="32" height="32" rx="8" fill="var(--color-accent)" />
+          <path d="M10 12L14 16L10 20M16 20H22" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="text-xl font-bold">TerminalSync</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <a href="https://github.com/aleqsio/terminalsync" target="_blank" rel="noopener noreferrer" class="nav-link text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors">
+          GitHub
+        </a>
+        <a href="#install" class="btn-glow px-6 py-2 bg-[var(--color-accent)] text-white rounded-lg font-medium" style="box-shadow: var(--shadow-glow-sm);">
+          Get Started
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="relative pt-32 pb-20 md:pt-40 md:pb-32 px-6">
+    <!-- Gradient beam effect -->
+    <div class="gradient-beam"></div>
+    <!-- Mouse glow effect -->
+    <div id="hero-glow" class="hero-glow"></div>
+
+    <div class="max-w-7xl mx-auto">
+      <div class="grid md:grid-cols-2 gap-12 md:gap-16 items-center">
+        <!-- Left: Copy -->
+        <div class="fade-in-up">
+          <h1 class="text-5xl md:text-7xl font-bold mb-6 leading-tight" style="letter-spacing: -0.02em;">
+            Your terminal, <span class="gradient-text">everywhere</span>
+          </h1>
+          <p class="text-xl md:text-2xl text-[var(--color-text-muted)] mb-6">
+            One command. One QR scan. Full terminal access from your phone.
+          </p>
+          <p class="text-lg text-[var(--color-text-dim)] mb-8">
+            Monitor builds. Approve Claude Code prompts. Debug with your team. All from your phone.
+          </p>
+          <div class="flex flex-col sm:flex-row gap-4">
+            <a href="#install" class="btn-glow px-8 py-4 bg-[var(--color-accent)] text-white rounded-lg font-semibold text-lg text-center" style="box-shadow: var(--shadow-glow);">
+              Get Started
+            </a>
+            <a href="https://github.com/aleqsio/terminalsync" target="_blank" rel="noopener noreferrer" class="btn-glow px-8 py-4 border border-[var(--color-border)] hover:border-[var(--color-border-hover)] text-[var(--color-text)] rounded-lg font-semibold text-lg text-center">
+              View on GitHub
+            </a>
+          </div>
+        </div>
+
+        <!-- Right: Terminal Mockup -->
+        <div class="fade-in-up" style="animation-delay: 0.2s;">
+          <div class="rounded-xl border border-[var(--color-border)] overflow-hidden" style="background: var(--color-bg-secondary); box-shadow: var(--shadow-card);">
+            <!-- Window Chrome -->
+            <div class="flex items-center gap-2 px-4 py-3 border-b border-[var(--color-border)]">
+              <div class="w-3 h-3 rounded-full bg-[#ff5f56]"></div>
+              <div class="w-3 h-3 rounded-full bg-[#ffbd2e]"></div>
+              <div class="w-3 h-3 rounded-full bg-[#27c93f]"></div>
+              <span class="ml-2 text-sm text-[var(--color-text-dim)]">terminal</span>
+            </div>
+            <!-- Terminal Content -->
+            <div class="p-6 font-mono text-sm leading-relaxed">
+              <div class="terminal-line mb-2">
+                <span class="text-[var(--color-accent)]">$</span>
+                <span class="text-[var(--color-text)]"> npx terminalsync</span>
+              </div>
+              <div class="terminal-line mb-1 text-[var(--color-success)]">✓ Server started on port 8089</div>
+              <div class="terminal-line mb-4 text-[var(--color-success)]">✓ Token generated</div>
+              <div class="terminal-line mb-3 text-[var(--color-text)]">📱 Scan to connect:</div>
+              <!-- QR Code Placeholder -->
+              <div class="terminal-line w-32 h-32 mb-4 rounded grid grid-cols-8 grid-rows-8 gap-[2px] bg-white p-2">
+                <div class="bg-black"></div>
+                <div class="bg-black"></div>
+                <div class="bg-black"></div>
+                <div class="bg-white"></div>
+                <div class="bg-black"></div>
+                <div class="bg-black"></div>
+                <div class="bg-black"></div>
+                <div class="bg-white"></div>
+                <div class="bg-black"></div>
+                <div class="bg-white"></div>
+                <div class="bg-black"></div>
+                <div class="bg-white"></div>
+                <div class="bg-white"></div>
+                <div class="bg-black"></div>
+                <div class="bg-black"></div>
+                <div class="bg-black"></div>
+                <div class="bg-black"></div>
+                <div class="bg-black"></div>
+                <div class="bg-white"></div>
+                <div class="bg-black"></div>
+                <div class="bg-black"></div>
+                <div class="bg-white"></div>
+                <div class="bg-white"></div>
+                <div class="bg-black"></div>
+                <div class="bg-white"></div>
+                <div class="bg-white"></div>
+                <div class="bg-black"></div>
+                <div class="bg-black"></div>
+                <div class="bg-white"></div>
+                <div class="bg-black"></div>
+                <div class="bg-black"></div>
+                <div class="bg-white"></div>
+                <div class="bg-black"></div>
+                <div class="bg-white"></div>
+                <div class="bg-white"></div>
+                <div class="bg-black"></div>
+                <div class="bg-black"></div>
+                <div class="bg-white"></div>
+                <div class="bg-black"></div>
+                <div class="bg-black"></div>
+                <div class="bg-white"></div>
+                <div class="bg-black"></div>
+                <div class="bg-black"></div>
+                <div class="bg-white"></div>
+                <div class="bg-white"></div>
+                <div class="bg-black"></div>
+                <div class="bg-black"></div>
+                <div class="bg-black"></div>
+                <div class="bg-white"></div>
+                <div class="bg-black"></div>
+                <div class="bg-black"></div>
+                <div class="bg-white"></div>
+                <div class="bg-black"></div>
+                <div class="bg-black"></div>
+                <div class="bg-black"></div>
+                <div class="bg-white"></div>
+                <div class="bg-black"></div>
+                <div class="bg-black"></div>
+                <div class="bg-black"></div>
+                <div class="bg-white"></div>
+              </div>
+              <div class="terminal-line text-[var(--color-success)]">✓ Connected: iPhone 15 Pro<span class="cursor-blink ml-1">▋</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works Section -->
+  <section class="relative py-20 md:py-32 px-6">
+    <div class="max-w-7xl mx-auto">
+      <div class="text-center mb-16">
+        <h2 class="text-4xl md:text-5xl font-bold mb-4">Terminal to phone in three steps</h2>
+        <p class="text-lg text-[var(--color-text-muted)]">No config. No account. Just works.</p>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-8">
+        <!-- Step 1 -->
+        <div class="animate-on-scroll card-glow rounded-xl border border-[var(--color-border)] p-8 hover:-translate-y-1 transition-all" style="background: rgba(22, 22, 30, 0.6); backdrop-filter: blur(12px);">
+          <div class="step-number w-12 h-12 rounded-lg bg-[var(--color-accent)] flex items-center justify-center mb-6" style="box-shadow: var(--shadow-glow-sm);">
+            <span class="text-2xl font-bold text-white">1</span>
+          </div>
+          <h3 class="text-2xl font-semibold mb-4">Run one command</h3>
+          <p class="text-[var(--color-text-muted)] mb-4">
+            <code class="px-3 py-1 bg-[var(--color-bg-secondary)] rounded border border-[var(--color-border)] text-[var(--color-accent)]">npx terminalsync</code> in any terminal. No config, no account.
+          </p>
+          <p class="text-[var(--color-text-dim)] text-sm">
+            Works in any directory, with any shell. One-liner setup.
+          </p>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="animate-on-scroll card-glow rounded-xl border border-[var(--color-border)] p-8 hover:-translate-y-1 transition-all" style="background: rgba(22, 22, 30, 0.6); backdrop-filter: blur(12px);">
+          <div class="step-number w-12 h-12 rounded-lg bg-[var(--color-info)] flex items-center justify-center mb-6" style="box-shadow: 0 0 20px rgba(74, 158, 255, 0.4);">
+            <span class="text-2xl font-bold text-white">2</span>
+          </div>
+          <h3 class="text-2xl font-semibold mb-4">Scan the QR code</h3>
+          <p class="text-[var(--color-text-muted)] mb-4">
+            Point your phone camera. Tap the link. You're connected.
+          </p>
+          <p class="text-[var(--color-text-dim)] text-sm">
+            Instant pairing. Works with any phone browser. No app install needed.
+          </p>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="animate-on-scroll card-glow rounded-xl border border-[var(--color-border)] p-8 hover:-translate-y-1 transition-all" style="background: rgba(22, 22, 30, 0.6); backdrop-filter: blur(12px);">
+          <div class="step-number w-12 h-12 rounded-lg bg-[var(--color-success)] flex items-center justify-center mb-6" style="box-shadow: 0 0 20px rgba(76, 175, 80, 0.4);">
+            <span class="text-2xl font-bold text-white">3</span>
+          </div>
+          <h3 class="text-2xl font-semibold mb-4">Full terminal on mobile</h3>
+          <p class="text-[var(--color-text-muted)] mb-4">
+            Type commands, review output, approve actions. Same terminal, different screen.
+          </p>
+          <p class="text-[var(--color-text-dim)] text-sm">
+            Real xterm.js terminal. Touch-optimized. Keyboard shortcuts included.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Use Cases Section -->
+  <section class="relative py-20 md:py-32 px-6" style="background: linear-gradient(180deg, transparent 0%, rgba(17, 17, 24, 0.5) 50%, transparent 100%);">
+    <div class="max-w-7xl mx-auto">
+      <div class="text-center mb-16">
+        <h2 class="text-4xl md:text-5xl font-bold mb-4">Built for real workflows</h2>
+        <p class="text-lg text-[var(--color-text-muted)]">Stop context-switching. Work from anywhere.</p>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-6">
+        <!-- Use Case 1 -->
+        <div class="animate-on-scroll card-glow rounded-xl border border-[var(--color-border)] p-8 hover:border-[var(--color-accent)] hover:-translate-y-1 transition-all" style="background: rgba(22, 22, 30, 0.6); backdrop-filter: blur(12px);">
+          <div class="flex items-center gap-3 mb-4">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" stroke="var(--color-accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <h3 class="text-2xl font-semibold">AI coding from anywhere</h3>
+          </div>
+          <p class="text-[var(--color-text-muted)] mb-4">
+            Claude Code waiting for approval? Review the diff and approve from your couch.
+          </p>
+          <p class="text-[var(--color-text-dim)] text-sm">
+            Perfect for LLM-assisted development. No need to be at your desk to unblock AI agents.
+          </p>
+        </div>
+
+        <!-- Use Case 2 -->
+        <div class="animate-on-scroll card-glow rounded-xl border border-[var(--color-border)] p-8 hover:border-[var(--color-info)] hover:-translate-y-1 transition-all" style="background: rgba(22, 22, 30, 0.6); backdrop-filter: blur(12px);">
+          <div class="flex items-center gap-3 mb-4">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" stroke="var(--color-info)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <h3 class="text-2xl font-semibold">Monitor long-running processes</h3>
+          </div>
+          <p class="text-[var(--color-text-muted)] mb-4">
+            Builds, migrations, deploys. Check progress from anywhere.
+          </p>
+          <p class="text-[var(--color-text-dim)] text-sm">
+            Get notified when jobs finish. No more babysitting terminal windows.
+          </p>
+        </div>
+
+        <!-- Use Case 3 -->
+        <div class="animate-on-scroll card-glow rounded-xl border border-[var(--color-border)] p-8 hover:border-[var(--color-success)] hover:-translate-y-1 transition-all" style="background: rgba(22, 22, 30, 0.6); backdrop-filter: blur(12px);">
+          <div class="flex items-center gap-3 mb-4">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" stroke="var(--color-success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <h3 class="text-2xl font-semibold">Collaborative debugging</h3>
+          </div>
+          <p class="text-[var(--color-text-muted)] mb-4">
+            Share your terminal session. Multiple people, same view. No screen sharing needed.
+          </p>
+          <p class="text-[var(--color-text-dim)] text-sm">
+            Perfect for pair programming, support calls, and team debugging.
+          </p>
+        </div>
+
+        <!-- Use Case 4 -->
+        <div class="animate-on-scroll card-glow rounded-xl border border-[var(--color-border)] p-8 hover:border-[var(--color-warning)] hover:-translate-y-1 transition-all" style="background: rgba(22, 22, 30, 0.6); backdrop-filter: blur(12px);">
+          <div class="flex items-center gap-3 mb-4">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13 10V3L4 14h7v7l9-11h-7z" stroke="var(--color-warning)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <h3 class="text-2xl font-semibold">Always-on terminal access</h3>
+          </div>
+          <p class="text-[var(--color-text-muted)] mb-4">
+            Add to shell startup. Every terminal, always accessible.
+          </p>
+          <p class="text-[var(--color-text-dim)] text-sm">
+            Set it and forget it. All your dev machines, one QR scan away.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Mobile Experience Section -->
+  <section class="relative py-20 md:py-32 px-6">
+    <div class="max-w-7xl mx-auto">
+      <div class="grid md:grid-cols-2 gap-12 md:gap-16 items-center">
+        <!-- Left: Phone Mockup -->
+        <div class="flex justify-center">
+          <div class="relative parallax" data-speed="0.05">
+            <!-- Phone Frame -->
+            <div class="phone-frame w-[320px] h-[650px] rounded-[3rem] border-[14px] border-[var(--color-bg-secondary)] relative overflow-hidden" style="background: var(--color-bg-primary); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);">
+              <!-- Notch -->
+              <div class="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-7 bg-[var(--color-bg-primary)] rounded-b-2xl z-10"></div>
+
+              <!-- Status Bar -->
+              <div class="flex items-center justify-between px-6 pt-2 text-xs text-[var(--color-text-muted)]">
+                <span>9:41</span>
+                <div class="flex items-center gap-1">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/>
+                  </svg>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- Terminal Header -->
+              <div class="mt-8 mx-3 rounded-t-lg border border-[var(--color-border)] border-b-0 px-3 py-2 flex items-center justify-between" style="background: var(--color-bg-secondary);">
+                <div class="flex items-center gap-2">
+                  <div class="w-2 h-2 rounded-full bg-[var(--color-success)] pulse-glow"></div>
+                  <span class="text-xs text-[var(--color-success)]">Connected</span>
+                </div>
+                <span class="text-xs text-[var(--color-text-dim)]">MacBook Pro</span>
+              </div>
+
+              <!-- Terminal Content -->
+              <div class="scanline mx-3 border border-[var(--color-border)] p-3 font-mono text-xs leading-relaxed" style="background: var(--color-bg-secondary); height: 400px; overflow-y: auto;">
+                <div class="mb-2">
+                  <span class="text-[var(--color-accent)]">~/projects</span>
+                  <span class="text-[var(--color-text-muted)]"> $</span>
+                  <span class="text-[var(--color-text)]"> npm run build</span>
+                </div>
+                <div class="text-[var(--color-info)] mb-1">&gt; vite build</div>
+                <div class="text-[var(--color-text-muted)] mb-2">vite v4.3.0 building for production...</div>
+                <div class="text-[var(--color-success)]">✓ 124 modules transformed.</div>
+                <div class="text-[var(--color-text-muted)] mb-2">dist/index.html  0.45 kB</div>
+                <div class="mb-2">
+                  <span class="text-[var(--color-accent)]">~/projects</span>
+                  <span class="text-[var(--color-text-muted)]"> $</span>
+                  <span class="cursor-blink ml-1">▋</span>
+                </div>
+              </div>
+
+              <!-- Quick Keys Bar -->
+              <div class="absolute bottom-0 left-0 right-0 mx-3 mb-3 rounded-lg border border-[var(--color-border)] p-2 flex items-center justify-between" style="background: rgba(22, 22, 30, 0.95); backdrop-filter: blur(8px);">
+                <button class="px-2 py-1 text-xs bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-muted)]">Tab</button>
+                <button class="px-2 py-1 text-xs bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-muted)]">Esc</button>
+                <button class="px-2 py-1 text-xs bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-muted)]">Ctrl+C</button>
+                <button class="px-2 py-1 text-xs bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-muted)]">↑</button>
+                <button class="px-2 py-1 text-xs bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-muted)]">↓</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Features -->
+        <div>
+          <h2 class="text-4xl md:text-5xl font-bold mb-6">A real terminal on your phone</h2>
+          <p class="text-xl text-[var(--color-text-muted)] mb-8">
+            Not a toy. Not a viewer. A full-featured terminal that works.
+          </p>
+
+          <div class="space-y-6">
+            <div class="flex items-start gap-4">
+              <div class="w-10 h-10 rounded-lg bg-[var(--color-accent)] bg-opacity-20 flex items-center justify-center flex-shrink-0">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 4v16m8-8H4" stroke="var(--color-accent)" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              </div>
+              <div>
+                <h4 class="text-lg font-semibold mb-1">Touch-optimized xterm.js</h4>
+                <p class="text-[var(--color-text-muted)]">Full terminal emulator with quick keys (Tab, Esc, Ctrl+C, arrows)</p>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-4">
+              <div class="w-10 h-10 rounded-lg bg-[var(--color-info)] bg-opacity-20 flex items-center justify-center flex-shrink-0">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke="var(--color-info)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+              <div>
+                <h4 class="text-lg font-semibold mb-1">Smart keyboard handling</h4>
+                <p class="text-[var(--color-text-muted)]">Terminal adjusts when keyboard appears. Smooth, native feel.</p>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-4">
+              <div class="w-10 h-10 rounded-lg bg-[var(--color-success)] bg-opacity-20 flex items-center justify-center flex-shrink-0">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z" stroke="var(--color-success)" stroke-width="2"/>
+                </svg>
+              </div>
+              <div>
+                <h4 class="text-lg font-semibold mb-1">Session management</h4>
+                <p class="text-[var(--color-text-muted)]">Switch between multiple terminals. All your sessions in one place.</p>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-4">
+              <div class="w-10 h-10 rounded-lg bg-[var(--color-warning)] bg-opacity-20 flex items-center justify-center flex-shrink-0">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" stroke="var(--color-warning)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+              <div>
+                <h4 class="text-lg font-semibold mb-1">Local network by default</h4>
+                <p class="text-[var(--color-text-muted)]">Works over local network. Optional Cloudflare tunnel for internet access.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Trust Signals Section -->
+  <section class="relative py-20 md:py-32 px-6" style="background: linear-gradient(180deg, transparent 0%, rgba(17, 17, 24, 0.5) 50%, transparent 100%);">
+    <div class="max-w-7xl mx-auto">
+      <div class="text-center mb-16">
+        <h2 class="text-4xl md:text-5xl font-bold mb-4">Local-first. Private by design.</h2>
+        <p class="text-lg text-[var(--color-text-muted)]">Your terminal data never touches our servers.</p>
+      </div>
+
+      <div class="grid md:grid-cols-4 gap-6 mb-12">
+        <!-- Trust Badge 1 -->
+        <div class="animate-on-scroll trust-badge rounded-xl border border-[var(--color-border)] p-6 text-center hover:border-[var(--color-accent)] transition-colors" style="background: rgba(22, 22, 30, 0.6); backdrop-filter: blur(12px);">
+          <div class="w-12 h-12 mx-auto mb-4 rounded-lg bg-[var(--color-accent)] bg-opacity-20 flex items-center justify-center">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" stroke="var(--color-accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h4 class="font-semibold mb-2">Local network first</h4>
+          <p class="text-sm text-[var(--color-text-muted)]">No cloud relay</p>
+        </div>
+
+        <!-- Trust Badge 2 -->
+        <div class="animate-on-scroll trust-badge rounded-xl border border-[var(--color-border)] p-6 text-center hover:border-[var(--color-info)] transition-colors" style="background: rgba(22, 22, 30, 0.6); backdrop-filter: blur(12px);">
+          <div class="w-12 h-12 mx-auto mb-4 rounded-lg bg-[var(--color-info)] bg-opacity-20 flex items-center justify-center">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" stroke="var(--color-info)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h4 class="font-semibold mb-2">Token-based auth</h4>
+          <p class="text-sm text-[var(--color-text-muted)]">Secure by default</p>
+        </div>
+
+        <!-- Trust Badge 3 -->
+        <div class="animate-on-scroll trust-badge rounded-xl border border-[var(--color-border)] p-6 text-center hover:border-[var(--color-success)] transition-colors" style="background: rgba(22, 22, 30, 0.6); backdrop-filter: blur(12px);">
+          <div class="w-12 h-12 mx-auto mb-4 rounded-lg bg-[var(--color-success)] bg-opacity-20 flex items-center justify-center">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="var(--color-success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h4 class="font-semibold mb-2">Optional tunnel</h4>
+          <p class="text-sm text-[var(--color-text-muted)]">Cloudflare for remote</p>
+        </div>
+
+        <!-- Trust Badge 4 -->
+        <div class="animate-on-scroll trust-badge rounded-xl border border-[var(--color-border)] p-6 text-center hover:border-[var(--color-warning)] transition-colors" style="background: rgba(22, 22, 30, 0.6); backdrop-filter: blur(12px);">
+          <div class="w-12 h-12 mx-auto mb-4 rounded-lg bg-[var(--color-warning)] bg-opacity-20 flex items-center justify-center">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" stroke="var(--color-warning)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h4 class="font-semibold mb-2">Open source</h4>
+          <p class="text-sm text-[var(--color-text-muted)]">MIT license</p>
+        </div>
+      </div>
+
+      <!-- Expanded Trust Details -->
+      <div class="rounded-xl border border-[var(--color-border)] p-8 md:p-12" style="background: rgba(22, 22, 30, 0.6); backdrop-filter: blur(12px);">
+        <div class="grid md:grid-cols-2 gap-8">
+          <div>
+            <h3 class="text-2xl font-semibold mb-4">How it works securely</h3>
+            <ul class="space-y-3 text-[var(--color-text-muted)]">
+              <li class="flex items-start gap-3">
+                <svg class="w-5 h-5 text-[var(--color-success)] mt-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                </svg>
+                <span>Server runs locally on your machine</span>
+              </li>
+              <li class="flex items-start gap-3">
+                <svg class="w-5 h-5 text-[var(--color-success)] mt-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                </svg>
+                <span>Unique token generated per session</span>
+              </li>
+              <li class="flex items-start gap-3">
+                <svg class="w-5 h-5 text-[var(--color-success)] mt-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                </svg>
+                <span>WebSocket connection over local network</span>
+              </li>
+              <li class="flex items-start gap-3">
+                <svg class="w-5 h-5 text-[var(--color-success)] mt-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                </svg>
+                <span>No data stored or logged</span>
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h3 class="text-2xl font-semibold mb-4">When you need remote access</h3>
+            <p class="text-[var(--color-text-muted)] mb-4">
+              Use Cloudflare Tunnel for secure internet access. All traffic encrypted end-to-end.
+            </p>
+            <div class="rounded-lg border border-[var(--color-border)] p-4 bg-[var(--color-bg-secondary)] font-mono text-sm">
+              <div class="text-[var(--color-text-dim)] mb-2"># Optional: enable tunnel</div>
+              <div class="text-[var(--color-text)]">npx terminalsync --tunnel</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Installation Section -->
+  <section id="install" class="relative py-20 md:py-32 px-6">
+    <div class="max-w-4xl mx-auto">
+      <div class="text-center mb-16">
+        <h2 class="text-4xl md:text-5xl font-bold mb-4">Start in 10 seconds</h2>
+        <p class="text-lg text-[var(--color-text-muted)]">No signup. No credit card. No config files.</p>
+      </div>
+
+      <!-- Installation Timeline -->
+      <div class="relative">
+        <!-- Timeline Line -->
+        <div class="absolute left-8 top-0 bottom-0 w-0.5 bg-gradient-to-b from-[var(--color-accent)] via-[var(--color-info)] to-[var(--color-success)]"></div>
+
+        <!-- Step 1 -->
+        <div class="relative pl-20 pb-12">
+          <div class="step-number absolute left-0 w-16 h-16 rounded-full bg-[var(--color-accent)] flex items-center justify-center font-bold text-xl" style="box-shadow: var(--shadow-glow);">
+            1
+          </div>
+          <div class="animate-on-scroll rounded-xl border border-[var(--color-border)] p-6" style="background: rgba(22, 22, 30, 0.6); backdrop-filter: blur(12px);">
+            <h3 class="text-xl font-semibold mb-3">Run the command</h3>
+            <div class="code-block rounded-lg border border-[var(--color-border)] p-4 bg-[var(--color-bg-secondary)] font-mono mb-3">
+              <div class="flex items-center justify-between">
+                <span class="text-[var(--color-accent)]">npx terminalsync</span>
+                <button id="copy-btn" class="copy-btn relative px-3 py-1 text-xs bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded hover:border-[var(--color-border-hover)] transition-colors">
+                  <span id="copy-text">Copy</span>
+                </button>
+              </div>
+            </div>
+            <p class="text-sm text-[var(--color-text-muted)]">Auto-starts server, generates token, shows QR code</p>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="relative pl-20 pb-12">
+          <div class="step-number absolute left-0 w-16 h-16 rounded-full bg-[var(--color-info)] flex items-center justify-center font-bold text-xl" style="box-shadow: 0 0 40px rgba(74, 158, 255, 0.4);">
+            2
+          </div>
+          <div class="animate-on-scroll rounded-xl border border-[var(--color-border)] p-6" style="background: rgba(22, 22, 30, 0.6); backdrop-filter: blur(12px);">
+            <h3 class="text-xl font-semibold mb-3">Scan with your phone</h3>
+            <p class="text-[var(--color-text-muted)] mb-3">
+              Open your phone camera and point it at the QR code. Tap the notification.
+            </p>
+            <p class="text-sm text-[var(--color-text-dim)]">Works with any phone browser. No app install needed.</p>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="relative pl-20">
+          <div class="step-number absolute left-0 w-16 h-16 rounded-full bg-[var(--color-success)] flex items-center justify-center font-bold text-xl" style="box-shadow: 0 0 40px rgba(76, 175, 80, 0.4);">
+            3
+          </div>
+          <div class="animate-on-scroll rounded-xl border border-[var(--color-border)] p-6" style="background: rgba(22, 22, 30, 0.6); backdrop-filter: blur(12px);">
+            <h3 class="text-xl font-semibold mb-3">You're connected</h3>
+            <p class="text-[var(--color-text-muted)] mb-3">
+              Full terminal on your phone. Type commands, review output, approve actions.
+            </p>
+            <p class="text-sm text-[var(--color-text-dim)]">Same terminal, different screen. It just works.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Advanced Options -->
+      <div class="mt-12 rounded-xl border border-[var(--color-border)] p-6" style="background: rgba(22, 22, 30, 0.6); backdrop-filter: blur(12px);">
+        <h3 class="text-lg font-semibold mb-4">Advanced options</h3>
+        <div class="space-y-3 font-mono text-sm">
+          <div class="flex items-start gap-3">
+            <span class="text-[var(--color-text-dim)]">#</span>
+            <div class="flex-1">
+              <code class="text-[var(--color-info)]">npx terminalsync --port 3000</code>
+              <p class="text-xs text-[var(--color-text-dim)] mt-1">Custom port</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="text-[var(--color-text-dim)]">#</span>
+            <div class="flex-1">
+              <code class="text-[var(--color-info)]">npx terminalsync --tunnel</code>
+              <p class="text-xs text-[var(--color-text-dim)] mt-1">Enable Cloudflare tunnel for remote access</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="text-[var(--color-text-dim)]">#</span>
+            <div class="flex-1">
+              <code class="text-[var(--color-info)]">npx terminalsync --help</code>
+              <p class="text-xs text-[var(--color-text-dim)] mt-1">See all options</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Final CTA Section -->
+  <section class="relative py-20 md:py-32 px-6">
+    <div class="max-w-4xl mx-auto text-center">
+      <div class="rounded-2xl border border-[var(--color-border)] p-12 md:p-16 relative overflow-hidden" style="background: rgba(22, 22, 30, 0.6); backdrop-filter: blur(12px);">
+        <!-- Glow Effect -->
+        <div class="absolute inset-0 bg-gradient-to-r from-transparent via-[var(--color-accent-glow)] to-transparent opacity-20"></div>
+
+        <div class="relative z-10">
+          <h2 class="text-4xl md:text-6xl font-bold mb-6">Your terminal awaits</h2>
+          <p class="text-xl md:text-2xl text-[var(--color-text-muted)] mb-8">
+            No signup. No credit card. Install and connect.
+          </p>
+          <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <a href="#install" class="btn-glow px-10 py-5 bg-[var(--color-accent)] text-white rounded-lg font-bold text-xl" style="box-shadow: var(--shadow-glow);">
+              Get Started
+            </a>
+            <div class="rounded-lg border border-[var(--color-border)] px-6 py-3 bg-[var(--color-bg-secondary)] font-mono text-sm">
+              npx terminalsync
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="relative py-12 px-6 border-t border-[var(--color-border)]">
+    <div class="max-w-7xl mx-auto">
+      <div class="grid md:grid-cols-4 gap-8 mb-8">
+        <!-- Brand -->
+        <div>
+          <div class="flex items-center gap-2 mb-4">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="32" height="32" rx="8" fill="var(--color-accent)" />
+              <path d="M10 12L14 16L10 20M16 20H22" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="text-xl font-bold">TerminalSync</span>
+          </div>
+          <p class="text-sm text-[var(--color-text-muted)]">
+            Your terminal, everywhere.
+          </p>
+        </div>
+
+        <!-- Product -->
+        <div>
+          <h4 class="font-semibold mb-3">Product</h4>
+          <ul class="space-y-2 text-sm text-[var(--color-text-muted)]">
+            <li><a href="#" class="hover:text-[var(--color-text)] transition-colors">Features</a></li>
+            <li><a href="#install" class="hover:text-[var(--color-text)] transition-colors">Installation</a></li>
+            <li><a href="https://github.com/aleqsio/terminalsync" target="_blank" rel="noopener noreferrer" class="hover:text-[var(--color-text)] transition-colors">Documentation</a></li>
+          </ul>
+        </div>
+
+        <!-- Resources -->
+        <div>
+          <h4 class="font-semibold mb-3">Resources</h4>
+          <ul class="space-y-2 text-sm text-[var(--color-text-muted)]">
+            <li><a href="https://github.com/aleqsio/terminalsync" target="_blank" rel="noopener noreferrer" class="hover:text-[var(--color-text)] transition-colors">GitHub</a></li>
+            <li><a href="https://github.com/aleqsio/terminalsync/issues" target="_blank" rel="noopener noreferrer" class="hover:text-[var(--color-text)] transition-colors">Report Bug</a></li>
+            <li><a href="https://github.com/aleqsio/terminalsync/issues" target="_blank" rel="noopener noreferrer" class="hover:text-[var(--color-text)] transition-colors">Request Feature</a></li>
+          </ul>
+        </div>
+
+        <!-- Legal -->
+        <div>
+          <h4 class="font-semibold mb-3">Legal</h4>
+          <ul class="space-y-2 text-sm text-[var(--color-text-muted)]">
+            <li><a href="https://github.com/aleqsio/terminalsync/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" class="hover:text-[var(--color-text)] transition-colors">License (MIT)</a></li>
+            <li><a href="#" class="hover:text-[var(--color-text)] transition-colors">Privacy</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Bottom Bar -->
+      <div class="pt-8 border-t border-[var(--color-border)] flex flex-col md:flex-row justify-between items-center gap-4">
+        <p class="text-sm text-[var(--color-text-dim)]">
+          © 2026 TerminalSync. Open source under MIT license.
+        </p>
+        <div class="flex items-center gap-4">
+          <a href="https://github.com/aleqsio/terminalsync" target="_blank" rel="noopener noreferrer" class="text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+            </svg>
+          </a>
+          <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" class="text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z"/>
+            </svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </footer>
+  <!-- Micro-interactions JavaScript -->
+  <script>
+    // Respect prefers-reduced-motion
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // ========== Scroll-triggered animations ==========
+    if (!prefersReducedMotion) {
+      const observerOptions = {
+        threshold: 0.15,
+        rootMargin: '0px 0px -50px 0px'
+      };
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+          }
+        });
+      }, observerOptions);
+
+      // Observe all animate-on-scroll elements
+      document.querySelectorAll('.animate-on-scroll').forEach(el => observer.observe(el));
+    } else {
+      // If reduced motion, make everything visible immediately
+      document.querySelectorAll('.animate-on-scroll').forEach(el => {
+        el.classList.add('is-visible');
+      });
+    }
+
+    // ========== Nav scroll effect ==========
+    const nav = document.getElementById('main-nav');
+    let lastScroll = 0;
+
+    window.addEventListener('scroll', () => {
+      const currentScroll = window.pageYOffset;
+
+      if (currentScroll > 50) {
+        nav.classList.add('nav-scrolled');
+      } else {
+        nav.classList.remove('nav-scrolled');
+      }
+
+      lastScroll = currentScroll;
+    }, { passive: true });
+
+    // ========== Copy button functionality ==========
+    const copyBtn = document.getElementById('copy-btn');
+    const copyText = document.getElementById('copy-text');
+
+    if (copyBtn) {
+      copyBtn.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText('npx terminalsync');
+
+          // Change button state
+          copyBtn.classList.add('copied');
+          copyText.textContent = '✓ Copied!';
+
+          // Revert after 2 seconds
+          setTimeout(() => {
+            copyBtn.classList.remove('copied');
+            copyText.textContent = 'Copy';
+          }, 2000);
+        } catch (err) {
+          console.error('Failed to copy:', err);
+        }
+      });
+    }
+
+    // ========== Mouse glow effect in hero ==========
+    if (!prefersReducedMotion) {
+      const heroGlow = document.getElementById('hero-glow');
+      const heroSection = document.querySelector('section');
+
+      if (heroGlow && heroSection) {
+        let mouseX = 0;
+        let mouseY = 0;
+        let glowX = 0;
+        let glowY = 0;
+        let isInHero = false;
+
+        heroSection.addEventListener('mouseenter', () => {
+          isInHero = true;
+          heroGlow.style.opacity = '1';
+        });
+
+        heroSection.addEventListener('mouseleave', () => {
+          isInHero = false;
+          heroGlow.style.opacity = '0';
+        });
+
+        heroSection.addEventListener('mousemove', (e) => {
+          const rect = heroSection.getBoundingClientRect();
+          mouseX = e.clientX - rect.left;
+          mouseY = e.clientY - rect.top;
+        });
+
+        // Smooth animation loop
+        function animateGlow() {
+          if (isInHero) {
+            glowX += (mouseX - glowX) * 0.1;
+            glowY += (mouseY - glowY) * 0.1;
+
+            heroGlow.style.transform = `translate(${glowX - 300}px, ${glowY - 300}px)`;
+          }
+
+          requestAnimationFrame(animateGlow);
+        }
+
+        animateGlow();
+      }
+    }
+
+    // ========== Parallax effect ==========
+    if (!prefersReducedMotion) {
+      const parallaxElements = document.querySelectorAll('.parallax');
+
+      window.addEventListener('scroll', () => {
+        parallaxElements.forEach(el => {
+          const speed = parseFloat(el.dataset.speed) || 0.05;
+          const rect = el.getBoundingClientRect();
+          const scrolled = window.pageYOffset;
+          const elementTop = rect.top + scrolled;
+          const offset = (scrolled - elementTop) * speed;
+
+          el.style.transform = `translateY(${offset}px)`;
+        });
+      }, { passive: true });
+
+      // Parallax for dot grid background
+      const dotGrid = document.body;
+      window.addEventListener('scroll', () => {
+        const scrolled = window.pageYOffset;
+        dotGrid.style.setProperty('--scroll-y', `${scrolled * 0.5}px`);
+      }, { passive: true });
+    }
+
+    // ========== Smooth scroll for anchor links ==========
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        const href = this.getAttribute('href');
+        if (href === '#') return;
+
+        e.preventDefault();
+        const target = document.querySelector(href);
+
+        if (target) {
+          target.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+        }
+      });
+    });
+  </script>
+</Layout>
+
+<style>
+  /* Smooth scroll offset for fixed nav */
+  html {
+    scroll-padding-top: 80px;
+  }
+
+  /* Staggered animations */
+  .fade-in-up:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+
+  .fade-in-up:nth-child(3) {
+    animation-delay: 0.4s;
+  }
+
+  /* Copy button interaction */
+  button:active {
+    transform: scale(0.95);
+  }
+</style>

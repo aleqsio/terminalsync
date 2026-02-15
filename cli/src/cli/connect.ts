@@ -4,10 +4,12 @@ import { randomBytes } from "crypto";
 import { readFileSync, writeFileSync, mkdirSync, openSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
-import { spawn, execFileSync } from "child_process";
+import { spawn, execFileSync, type ChildProcess } from "child_process";
 import http from "http";
 import WebSocket from "ws";
 import qrcode from "qrcode-terminal";
+import * as p from "@clack/prompts";
+import { tunnel as cloudflaredTunnel } from "cloudflared";
 
 // --- Config (env vars with config-file fallback) ---
 
@@ -39,10 +41,37 @@ function loadConfigFile(): Record<string, string> {
   return vars;
 }
 
+function setConfigValue(key: string, value: string): void {
+  const configPath = ensureConfigFile();
+  const contents = readFileSync(configPath, "utf-8");
+  const lines = contents.split("\n");
+  let found = false;
+  const updated = lines.map((line) => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith(key + "=")) {
+      found = true;
+      return `${key}=${value}`;
+    }
+    return line;
+  });
+  if (!found) {
+    // Append before trailing empty line if present
+    if (updated.length > 0 && updated[updated.length - 1] === "") {
+      updated.splice(updated.length - 1, 0, `${key}=${value}`);
+    } else {
+      updated.push(`${key}=${value}`);
+    }
+  }
+  writeFileSync(configPath, updated.join("\n"));
+}
+
 const fileConfig = loadConfigFile();
 const host = process.env.TERMINALSYNC_HOST ?? fileConfig.TERMINALSYNC_HOST ?? "0.0.0.0";
 const port = process.env.TERMINALSYNC_PORT ?? fileConfig.TERMINALSYNC_PORT ?? "8089";
 const token = process.env.TERMINALSYNC_TOKEN ?? fileConfig.TERMINALSYNC_TOKEN;
+const tunnelEnabled = (process.env.TERMINALSYNC_TUNNEL ?? fileConfig.TERMINALSYNC_TUNNEL ?? "false") === "true";
+// Dead feature flag — when enabled, cmdConnect() would use buildDeepLink() for native app URLs
+const _appDeeplinkEnabled = (process.env.TERMINALSYNC_APP_DEEPLINK ?? fileConfig.TERMINALSYNC_APP_DEEPLINK ?? "false") === "true";
 
 function wsUrl(): string {
   return `ws://${host}:${port}`;
@@ -341,6 +370,39 @@ function cleanup(): void {
   process.stdin.pause();
 }
 
+// --- Config command ---
+
+async function cmdConfig(): Promise<void> {
+  p.intro("terminalsync config");
+
+  const currentConfig = loadConfigFile();
+  const currentTunnel = (currentConfig.TERMINALSYNC_TUNNEL ?? "false") === "true";
+  const currentPort = currentConfig.TERMINALSYNC_PORT ?? "8089";
+
+  const enableTunnel = await p.confirm({
+    message: "Enable tunnel? (share outside local network)",
+    initialValue: currentTunnel,
+  });
+  if (p.isCancel(enableTunnel)) {
+    p.cancel("Config cancelled.");
+    process.exit(0);
+  }
+
+  const newPort = await p.text({
+    message: "Server port",
+    initialValue: currentPort,
+  });
+  if (p.isCancel(newPort)) {
+    p.cancel("Config cancelled.");
+    process.exit(0);
+  }
+
+  setConfigValue("TERMINALSYNC_TUNNEL", enableTunnel ? "true" : "false");
+  setConfigValue("TERMINALSYNC_PORT", newPort);
+
+  p.outro("Config saved!");
+}
+
 // --- QR code connect command ---
 
 function getLanIp(): string {
@@ -353,26 +415,90 @@ function getLanIp(): string {
   return host; // fall back to configured host
 }
 
-async function cmdConnect(): Promise<void> {
-  if (!(await ensureServer())) die("Cannot reach server");
-
-  const lanHost = getLanIp();
-  const sessionId = process.env.TERMINALSYNC_SESSION;
-  let url: string;
-  if (sessionId) {
-    url = `terminalsync://terminal/${sessionId}?host=${encodeURIComponent(lanHost)}&port=${encodeURIComponent(port)}&token=${encodeURIComponent(token!)}`;
-  } else {
-    url = `terminalsync://?host=${encodeURIComponent(lanHost)}&port=${encodeURIComponent(port)}&token=${encodeURIComponent(token!)}`;
+function buildDeepLink(opts: { sessionId?: string; tunnelUrl?: string; lanHost?: string }): string {
+  const sessionPath = opts.sessionId ? `/terminal/${opts.sessionId}` : "";
+  const params = new URLSearchParams();
+  if (opts.tunnelUrl) {
+    params.set("url", opts.tunnelUrl);
+  } else if (opts.lanHost) {
+    params.set("host", opts.lanHost);
+    params.set("port", port);
   }
+  params.set("token", token!);
+  return `terminalsync:/${sessionPath}?${params.toString()}`;
+}
 
+function buildWebUrl(opts: { sessionId?: string; tunnelUrl?: string; lanHost?: string }): string {
+  const hash = opts.sessionId ? `${token}/${opts.sessionId}` : token!;
+  if (opts.tunnelUrl) {
+    return `${opts.tunnelUrl}/#${hash}`;
+  }
+  return `http://${opts.lanHost}:${port}/#${hash}`;
+}
+
+function printQr(url: string, exitAfter: boolean): void {
   process.stderr.write(`${url}\n`);
   qrcode.generate(url, { small: true }, (code: string) => {
     process.stderr.write(code + "\n");
+    if (exitAfter) process.exit(0);
+  });
+}
+
+async function cmdConnect(): Promise<void> {
+  if (!(await ensureServer())) die("Cannot reach server");
+
+  const sessionId = process.env.TERMINALSYNC_SESSION;
+
+  if (!tunnelEnabled) {
+    const url = buildWebUrl({ sessionId, lanHost: getLanIp() });
+    printQr(url, true);
+    return;
+  }
+
+  // Tunnel mode
+  const localUrl = `http://localhost:${port}`;
+  process.stderr.write(`Starting tunnel to ${localUrl}...\n`);
+
+  const { url: tunnelUrl, child: tunnelChild, stop } = cloudflaredTunnel({
+    "--url": localUrl,
+  });
+
+  const publicUrl = await tunnelUrl;
+  const webUrl = buildWebUrl({ sessionId, tunnelUrl: publicUrl });
+  printQr(webUrl, false);
+  process.stderr.write(`Tunnel active: ${publicUrl}\nPress Ctrl+C to stop.\n`);
+
+  const shutdown = () => {
+    stop();
     process.exit(0);
+  };
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
+
+  // Keep alive until tunnel child exits or signal
+  await new Promise<void>((resolve) => {
+    tunnelChild.on("exit", resolve);
   });
 }
 
 // --- Main ---
+
+function printHelp(): void {
+  const text = `terminalsync — share your terminal with any device
+
+Usage: terminalsync <command>
+
+Commands:
+  share            Start a new terminal session
+  connect          Show QR code to connect from mobile
+  config           Configure tunnel, host, and port
+  list             List active sessions
+  attach <id>      Attach to an existing session
+  help             Show this help message
+
+Run 'terminalsync config' to enable tunnel mode for sharing outside your local network.`;
+  console.log(text);
+}
 
 const args = process.argv.slice(2);
 const cmd = args[0];
@@ -388,10 +514,18 @@ switch (cmd) {
   case "connect":
     cmdConnect();
     break;
+  case "config":
+    cmdConfig();
+    break;
   case "share":
-  case undefined:
     cmdShare();
     break;
+  case "help":
+  case "--help":
+  case "-h":
+  case undefined:
+    printHelp();
+    break;
   default:
-    die(`Unknown command: ${cmd}\nUsage: terminalsync [share|connect|list|attach <id>]`);
+    die(`Unknown command: ${cmd}\nRun 'terminalsync help' for usage.`);
 }

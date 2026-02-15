@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { readFileSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { readFileSync, existsSync } from "node:fs";
+import { resolve, dirname, extname, normalize, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { WebSocketServer, type WebSocket } from "ws";
 import { timingSafeEqual } from "node:crypto";
@@ -54,13 +54,39 @@ export async function createWSServer(config: Config): Promise<{
   });
 
   const __dirname = dirname(fileURLToPath(import.meta.url));
-  const webIndexPath = resolve(__dirname, "../web/index.html");
-  let cachedHtml: string | null = null;
-  function getHtml(): string {
-    if (!cachedHtml) {
-      cachedHtml = readFileSync(webIndexPath, "utf-8");
+  const webRoot = resolve(__dirname, "../web");
+
+  const MIME_TYPES: Record<string, string> = {
+    ".html": "text/html; charset=utf-8",
+    ".js": "application/javascript; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".json": "application/json; charset=utf-8",
+    ".svg": "image/svg+xml",
+    ".png": "image/png",
+    ".ico": "image/x-icon",
+    ".woff": "font/woff",
+    ".woff2": "font/woff2",
+  };
+
+  function serveFile(res: ServerResponse, filePath: string): boolean {
+    // Path traversal protection: ensure resolved path stays within webRoot
+    const resolved = normalize(resolve(webRoot, filePath));
+    if (!resolved.startsWith(webRoot)) {
+      res.writeHead(403);
+      res.end();
+      return true;
     }
-    return cachedHtml;
+    if (!existsSync(resolved)) return false;
+    try {
+      const content = readFileSync(resolved);
+      const ext = extname(resolved);
+      const mime = MIME_TYPES[ext] ?? "application/octet-stream";
+      res.writeHead(200, { "Content-Type": mime });
+      res.end(content);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   const httpServer = createServer((req: IncomingMessage, res: ServerResponse) => {
@@ -75,18 +101,16 @@ export async function createWSServer(config: Config): Promise<{
       return;
     }
 
-    const pathname = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`).pathname;
-    if (pathname === "/" || pathname === "/index.html") {
-      try {
-        const html = getHtml();
-        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-        res.end(html);
-      } catch {
-        res.writeHead(500);
-        res.end("Web UI not found");
-      }
-      return;
-    }
+    const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
+    let pathname = decodeURIComponent(url.pathname);
+
+    // Serve exact file if it exists
+    if (pathname === "/") pathname = "/index.html";
+    const relPath = pathname.slice(1); // strip leading /
+    if (serveFile(res, relPath)) return;
+
+    // SPA fallback: serve index.html for unknown paths
+    if (serveFile(res, "index.html")) return;
 
     res.writeHead(404);
     res.end();
