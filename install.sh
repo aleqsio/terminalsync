@@ -9,9 +9,6 @@ REPO_DIR="$INSTALL_DIR/repo"
 BIN_DIR="$INSTALL_DIR/bin"
 WRAPPER="$BIN_DIR/terminalsync"
 
-SENTINEL_BEGIN="# >>> terminalsync >>>"
-SENTINEL_END="# <<< terminalsync <<<"
-
 info() { printf "\033[0;34m%s\033[0m\n" "$1"; }
 ok()   { printf "\033[0;32m%s\033[0m\n" "$1"; }
 err()  { printf "\033[0;31mError: %s\033[0m\n" "$1" >&2; exit 1; }
@@ -51,27 +48,7 @@ exec node "$HOME/.terminalsync/repo/cli/dist/cli/connect.js" "$@"
 WRAP
 chmod +x "$WRAPPER"
 
-# --- Shell hook ---
-
-HOOK="$SENTINEL_BEGIN
-export PATH=\"\$HOME/.terminalsync/bin:\$PATH\"
-if [ -z \"\$TERMINALSYNC_SESSION\" ] && command -v terminalsync >/dev/null 2>&1; then
-  exec terminalsync share
-fi
-$SENTINEL_END"
-
-add_hook() {
-  [ -f "$1" ] || return 0
-  if grep -q "$SENTINEL_BEGIN" "$1" 2>/dev/null; then
-    sed -i.bak "/$SENTINEL_BEGIN/,/$SENTINEL_END/d" "$1"
-    rm -f "$1.bak"
-  fi
-  printf "\n%s\n" "$HOOK" >> "$1"
-}
-
-add_hook "$HOME/.zshrc"
-add_hook "$HOME/.bashrc"
-
 # --- Done ---
 
-ok "TerminalSync installed! Open a new terminal to start."
+ok "TerminalSync installed!"
+info "Add to your PATH: export PATH=\"\$HOME/.terminalsync/bin:\$PATH\""
