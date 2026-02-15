@@ -39,6 +39,7 @@ export default function App() {
   const seqRef = useRef(0);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoAttachRef = useRef<string | null>(hashSessionId);
+  const reattachRef = useRef<string | null>(null);
   const termRef = useRef<XTerm | null>(null);
   const attachedIdRef = useRef<string | null>(null);
 
@@ -80,6 +81,7 @@ export default function App() {
         case "session_list": {
           const list = msg.payload.sessions as Session[];
           setSessions(list);
+          // Try auto-attach from URL hash
           const auto = autoAttachRef.current;
           if (auto && !attachedIdRef.current) {
             const target = list.find(
@@ -88,10 +90,25 @@ export default function App() {
             if (target) {
               autoAttachRef.current = null;
               attachTo(target.id);
+              break;
             }
           }
+          // Re-attach after reconnect
+          const reattach = reattachRef.current;
+          if (reattach && !attachedIdRef.current) {
+            const target = list.find((s) => s.id === reattach);
+            if (target) {
+              reattachRef.current = null;
+              attachTo(target.id);
+              break;
+            }
+            // Session gone — clear cached state
+            reattachRef.current = null;
+            setAttachedId(null);
+            setTermSize(null);
+          }
           // Auto-attach to first session if only one exists
-          if (!auto && !attachedIdRef.current && list.length === 1) {
+          if (!auto && !reattach && !attachedIdRef.current && list.length === 1) {
             attachTo(list[0].id);
           }
           break;
@@ -103,11 +120,13 @@ export default function App() {
           const target = msg.payload.target as string;
           const cols = msg.payload.cols as number;
           const rows = msg.payload.rows as number;
+          const isReattach = reattachRef.current === target;
+          reattachRef.current = null;
           setAttachedId(target);
           setTermSize({ cols, rows });
           const term = termRef.current;
           if (term) {
-            term.clear();
+            if (!isReattach) term.clear();
             term.focus();
           }
           break;
@@ -152,13 +171,15 @@ export default function App() {
       ws.addEventListener("close", () => {
         setStatus("disconnected");
         wsRef.current = null;
-        setAttachedId(null);
-        setTermSize(null);
-        setSessions([]);
         if (pollRef.current) {
           clearInterval(pollRef.current);
           pollRef.current = null;
         }
+        // Remember what we were attached to so we can re-attach after reconnect
+        if (attachedIdRef.current) {
+          reattachRef.current = attachedIdRef.current;
+        }
+        // Keep sessions/attachedId/termSize cached — UI stays stable during brief disconnects
         // Reconnect after 2s
         setTimeout(() => {
           if (tok) doConnect(tok);
