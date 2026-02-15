@@ -6,6 +6,8 @@ interface TerminalViewProps {
   termSize: { cols: number; rows: number } | null;
   termRef: MutableRefObject<Terminal | null>;
   onData: (data: string) => void;
+  connected: boolean;
+  sessionCount: number;
 }
 
 export default function TerminalView({
@@ -13,6 +15,8 @@ export default function TerminalView({
   termSize,
   termRef,
   onData,
+  connected,
+  sessionCount,
 }: TerminalViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const initRef = useRef(false);
@@ -62,10 +66,18 @@ export default function TerminalView({
         }}
       />
       {!showTerminal && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <p className="text-sm text-zinc-600">
-            {attachedId === null ? "Waiting for session..." : ""}
-          </p>
+        <div className="absolute inset-0 flex items-center justify-center px-6">
+          {connected && sessionCount === 0 ? (
+            <div className="text-center max-w-xs space-y-3">
+              <p className="text-sm text-zinc-400">No shared terminals</p>
+              <p className="text-xs text-zinc-600 leading-relaxed">
+                Run <code className="px-1.5 py-0.5 rounded text-zinc-400" style={{ background: "var(--bg-elevated)" }}>terminalsync share</code> in
+                a terminal to start sharing. The session will appear here automatically.
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-zinc-600">Connecting...</p>
+          )}
         </div>
       )}
     </div>

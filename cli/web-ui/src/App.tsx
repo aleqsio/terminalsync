@@ -231,6 +231,8 @@ export default function App() {
         termSize={termSize}
         termRef={termRef}
         onData={handleTermData}
+        connected={status === "connected"}
+        sessionCount={sessions.length}
       />
     </>
   );

@@ -418,9 +418,37 @@ function printQr(url, exitAfter) {
             process.exit(0);
     });
 }
+function checkSessions() {
+    return new Promise((resolve) => {
+        if (!token) {
+            resolve(0);
+            return;
+        }
+        const ws = new WebSocket(wsUrl(), {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        const timeout = setTimeout(() => { ws.close(); resolve(0); }, 3000);
+        ws.on("open", () => {
+            send(ws, { type: "list_sessions", payload: {} });
+        });
+        ws.on("message", (raw) => {
+            const msg = JSON.parse(raw.toString());
+            if (msg.type === "session_list") {
+                clearTimeout(timeout);
+                ws.close();
+                resolve(msg.payload.sessions.length);
+            }
+        });
+        ws.on("error", () => { clearTimeout(timeout); resolve(0); });
+    });
+}
 async function cmdConnect() {
     if (!(await ensureServer()))
         die("Cannot reach server");
+    const sessionCount = await checkSessions();
+    if (sessionCount === 0) {
+        warn("No shared sessions. Run 'terminalsync share' in a terminal first.");
+    }
     const sessionId = process.env.TERMINALSYNC_SESSION;
     const health = await fetchHealth();
     if (health?.tunnelUrl) {
