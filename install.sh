@@ -48,7 +48,20 @@ exec node "$HOME/.terminalsync/repo/cli/dist/cli/connect.js" "$@"
 WRAP
 chmod +x "$WRAPPER"
 
+# --- Add to PATH ---
+
+PATH_LINE='export PATH="$HOME/.terminalsync/bin:$PATH"'
+
+add_path() {
+  [ -f "$1" ] || return 0
+  grep -qF '.terminalsync/bin' "$1" 2>/dev/null && return 0
+  printf "\n%s\n" "$PATH_LINE" >> "$1"
+  ok "Added to PATH in $1"
+}
+
+add_path "$HOME/.zshrc"
+add_path "$HOME/.bashrc"
+
 # --- Done ---
 
-ok "TerminalSync installed!"
-info "Add to your PATH: export PATH=\"\$HOME/.terminalsync/bin:\$PATH\""
+ok "TerminalSync installed! Open a new terminal to start."
