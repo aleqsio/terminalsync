@@ -42,6 +42,7 @@ export default function App() {
   const reattachRef = useRef<string | null>(null);
   const termRef = useRef<XTerm | null>(null);
   const attachedIdRef = useRef<string | null>(null);
+  const pendingDataRef = useRef<Uint8Array[]>([]);
 
   useEffect(() => {
     attachedIdRef.current = attachedId;
@@ -162,7 +163,12 @@ export default function App() {
 
       ws.addEventListener("message", (evt) => {
         if (evt.data instanceof ArrayBuffer) {
-          termRef.current?.write(new Uint8Array(evt.data));
+          const data = new Uint8Array(evt.data);
+          if (termRef.current) {
+            termRef.current.write(data);
+          } else {
+            pendingDataRef.current.push(data);
+          }
           return;
         }
         handleMessage(JSON.parse(evt.data));
@@ -210,6 +216,16 @@ export default function App() {
     [sendMsg],
   );
 
+  const handleTermReady = useCallback(() => {
+    const pending = pendingDataRef.current;
+    if (pending.length > 0 && termRef.current) {
+      for (const chunk of pending) {
+        termRef.current.write(chunk);
+      }
+      pendingDataRef.current = [];
+    }
+  }, []);
+
   const StatusIcon = () => {
     if (status === "connecting")
       return <Loader2 size={14} className="animate-spin text-yellow-400" />;
@@ -252,6 +268,7 @@ export default function App() {
         termSize={termSize}
         termRef={termRef}
         onData={handleTermData}
+        onReady={handleTermReady}
         connected={status === "connected"}
         sessionCount={sessions.length}
       />

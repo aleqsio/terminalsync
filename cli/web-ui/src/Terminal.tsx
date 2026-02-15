@@ -7,6 +7,7 @@ interface TerminalViewProps {
   termSize: { cols: number; rows: number } | null;
   termRef: MutableRefObject<Terminal | null>;
   onData: (data: string) => void;
+  onReady: () => void;
   connected: boolean;
   sessionCount: number;
 }
@@ -16,6 +17,7 @@ export default function TerminalView({
   termSize,
   termRef,
   onData,
+  onReady,
   connected,
   sessionCount,
 }: TerminalViewProps) {
@@ -51,10 +53,13 @@ export default function TerminalView({
       term.resize(termSize.cols, termSize.rows);
     }
 
+    // Flush any buffered data that arrived before the terminal was ready
+    onReady();
+
     return () => {
       term.dispose();
     };
-  }, [showTerminal, termRef, onData, termSize]);
+  }, [showTerminal, termRef, onData, onReady, termSize]);
 
   // Resize terminal to match server's PTY dimensions
   useEffect(() => {
