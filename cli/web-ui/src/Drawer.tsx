@@ -41,6 +41,7 @@ export default function Drawer({
             Sessions
           </span>
           <button
+            tabIndex={-1}
             onClick={onClose}
             className="p-1 rounded-md hover:bg-white/5 transition-colors"
           >
@@ -60,6 +61,7 @@ export default function Drawer({
               return (
                 <button
                   key={s.id}
+                  tabIndex={-1}
                   onClick={() => onSelect(s.id)}
                   className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
                     active

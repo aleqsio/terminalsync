@@ -48,6 +48,15 @@ export default function TerminalView({
     termRef.current = term;
     term.onData(onData);
 
+    // Suppress Safari's form accessory bar (< > Done) by making the
+    // textarea the only tabbable element and disabling autocorrect
+    if (term.textarea) {
+      term.textarea.setAttribute("autocorrect", "off");
+      term.textarea.setAttribute("autocapitalize", "off");
+      term.textarea.setAttribute("spellcheck", "false");
+      term.textarea.setAttribute("autocomplete", "off");
+    }
+
     // Apply size immediately if already known
     if (termSize && termSize.cols > 0 && termSize.rows > 0) {
       term.resize(termSize.cols, termSize.rows);
@@ -123,6 +132,7 @@ export default function TerminalView({
           {keys.map((k) => (
             <button
               key={k.label}
+              tabIndex={-1}
               onPointerDown={(e) => {
                 e.preventDefault();
                 sendKey(k.seq);

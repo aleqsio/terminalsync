@@ -260,6 +260,7 @@ export default function App() {
       {/* Header */}
       <header className="flex items-center h-11 px-3 gap-3 shrink-0" style={{ background: "var(--bg-surface)", borderBottom: "1px solid var(--border)" }}>
         <button
+          tabIndex={-1}
           onClick={() => setDrawerOpen(!drawerOpen)}
           className="p-1.5 rounded-md hover:bg-white/5 transition-colors"
         >
