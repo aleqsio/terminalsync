@@ -204,6 +204,25 @@ export default function App() {
     if (token) doConnect(token);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Track visual viewport so the layout (and shortcut bar) stays above the iOS keyboard
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const root = document.getElementById("root");
+    if (!root) return;
+
+    const update = () => {
+      root.style.height = `${vv.height}px`;
+    };
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    update();
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, []);
+
   const handleTermData = useCallback(
     (data: string) => {
       if (

@@ -29,4 +29,5 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* Overridden by JS via visualViewport for iOS keyboard support */
 }
