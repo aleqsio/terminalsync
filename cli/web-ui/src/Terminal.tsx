@@ -43,6 +43,8 @@ export default function TerminalView({
         selectionBackground: "#6366f140",
       },
       scrollback: 5000,
+      scrollSensitivity: 3,
+      fastScrollSensitivity: 10,
     });
     term.open(containerRef.current);
     termRef.current = term;

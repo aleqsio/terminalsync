@@ -31,3 +31,9 @@ body {
   overflow: hidden;
   /* Overridden by JS via visualViewport for iOS keyboard support */
 }
+
+/* Let xterm handle all touch gestures (scroll, select) without
+   Safari intercepting them for native scroll/bounce */
+.xterm {
+  touch-action: none;
+}
