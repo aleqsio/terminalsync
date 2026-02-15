@@ -9,7 +9,6 @@ import http from "http";
 import WebSocket from "ws";
 import qrcode from "qrcode-terminal";
 import * as p from "@clack/prompts";
-import { tunnel as cloudflaredTunnel } from "cloudflared";
 // --- Config (env vars with config-file fallback) ---
 function ensureConfigFile() {
     const tsDir = join(homedir(), ".terminalsync");
@@ -87,7 +86,6 @@ function openWs() {
     });
     return ws;
 }
-// --- Auto-start server ---
 function checkHealth() {
     return new Promise((resolve) => {
         const req = http.get(`http://${host}:${port}/health`, (res) => {
@@ -99,6 +97,24 @@ function checkHealth() {
             req.destroy();
             resolve(false);
         });
+    });
+}
+function fetchHealth() {
+    return new Promise((resolve) => {
+        const req = http.get(`http://${host}:${port}/health`, (res) => {
+            let body = "";
+            res.on("data", (chunk) => { body += chunk; });
+            res.on("end", () => {
+                try {
+                    resolve(JSON.parse(body));
+                }
+                catch {
+                    resolve(null);
+                }
+            });
+        });
+        req.on("error", () => resolve(null));
+        req.setTimeout(2000, () => { req.destroy(); resolve(null); });
     });
 }
 function sleep(ms) {
@@ -148,6 +164,7 @@ async function ensureServer() {
                 TERMINALSYNC_TOKEN: token,
                 TERMINALSYNC_HOST: host,
                 TERMINALSYNC_PORT: port,
+                TERMINALSYNC_TUNNEL: tunnelEnabled ? "true" : "false",
             },
         });
         child.unref();
@@ -405,31 +422,15 @@ async function cmdConnect() {
     if (!(await ensureServer()))
         die("Cannot reach server");
     const sessionId = process.env.TERMINALSYNC_SESSION;
-    if (!tunnelEnabled) {
+    const health = await fetchHealth();
+    if (health?.tunnelUrl) {
+        const url = buildWebUrl({ sessionId, tunnelUrl: health.tunnelUrl });
+        printQr(url, true);
+    }
+    else {
         const url = buildWebUrl({ sessionId, lanHost: getLanIp() });
         printQr(url, true);
-        return;
     }
-    // Tunnel mode
-    const localUrl = `http://localhost:${port}`;
-    process.stderr.write(`Starting tunnel to ${localUrl}...\n`);
-    const { url: tunnelUrl, child: tunnelChild, stop } = cloudflaredTunnel({
-        "--url": localUrl,
-    });
-    const publicUrl = await tunnelUrl;
-    const webUrl = buildWebUrl({ sessionId, tunnelUrl: publicUrl });
-    printQr(webUrl, false);
-    process.stderr.write(`Tunnel active: ${publicUrl}\nPress Ctrl+C to stop.\n`);
-    const shutdown = () => {
-        stop();
-        process.exit(0);
-    };
-    process.on("SIGINT", shutdown);
-    process.on("SIGTERM", shutdown);
-    // Keep alive until tunnel child exits or signal
-    await new Promise((resolve) => {
-        tunnelChild.on("exit", resolve);
-    });
 }
 // --- Main ---
 function printHelp() {

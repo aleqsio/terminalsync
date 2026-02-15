@@ -4,6 +4,7 @@ import { resolve, dirname, extname, normalize, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { WebSocketServer, type WebSocket } from "ws";
 import { timingSafeEqual } from "node:crypto";
+import { tunnel as cloudflaredTunnel } from "cloudflared";
 import type { Config } from "../config.js";
 import { SessionManager } from "../session/session-manager.js";
 import { ManagedSessionStore } from "../session/managed-session-store.js";
@@ -53,6 +54,9 @@ export async function createWSServer(config: Config): Promise<{
     process.exit(0);
   });
 
+  let tunnelUrl: string | null = null;
+  let stopTunnel: (() => void) | null = null;
+
   const __dirname = dirname(fileURLToPath(import.meta.url));
   const webRoot = resolve(__dirname, "../web");
 
@@ -96,6 +100,7 @@ export async function createWSServer(config: Config): Promise<{
         JSON.stringify({
           status: "ok",
           clients: sessionManager.getClientCount(),
+          tunnelUrl: tunnelUrl ?? undefined,
         }),
       );
       return;
@@ -142,9 +147,30 @@ export async function createWSServer(config: Config): Promise<{
         console.log(
           `TerminalSync listening on ws://${config.host}:${config.port}`,
         );
+
+        if (config.tunnel) {
+          const localUrl = `http://localhost:${config.port}`;
+          console.log(`Starting tunnel to ${localUrl}...`);
+
+          const { url: urlPromise, stop } = cloudflaredTunnel({
+            "--url": localUrl,
+          });
+          stopTunnel = stop;
+
+          urlPromise.then((url) => {
+            tunnelUrl = url;
+            console.log(`Tunnel active: ${url}`);
+          }).catch((err) => {
+            console.error(`Tunnel failed: ${err}`);
+          });
+        }
       });
     },
     shutdown() {
+      if (stopTunnel) {
+        stopTunnel();
+        stopTunnel = null;
+      }
       sessionManager.shutdown();
       wss.close();
       httpServer.close();

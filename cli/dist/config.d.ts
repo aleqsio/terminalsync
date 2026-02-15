@@ -5,5 +5,6 @@ export interface Config {
     maxClients: number;
     defaultScrollbackLines: number;
     defaultShell: string;
+    tunnel: boolean;
 }
 export declare function loadConfig(): Config;

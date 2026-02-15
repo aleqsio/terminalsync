@@ -11,6 +11,7 @@ export function loadConfig() {
         maxClients: parseInt(process.env.TERMINALSYNC_MAX_CLIENTS ?? "10", 10),
         defaultScrollbackLines: parseInt(process.env.TERMINALSYNC_SCROLLBACK ?? "1000", 10),
         defaultShell: process.env.TERMINALSYNC_SHELL ?? process.env.SHELL ?? "/bin/sh",
+        tunnel: (process.env.TERMINALSYNC_TUNNEL ?? "false") === "true",
     };
 }
 //# sourceMappingURL=config.js.map

@@ -5,6 +5,7 @@ export interface Config {
   maxClients: number;
   defaultScrollbackLines: number;
   defaultShell: string;
+  tunnel: boolean;
 }
 
 export function loadConfig(): Config {
@@ -25,5 +26,7 @@ export function loadConfig(): Config {
     ),
     defaultShell:
       process.env.TERMINALSYNC_SHELL ?? process.env.SHELL ?? "/bin/sh",
+    tunnel:
+      (process.env.TERMINALSYNC_TUNNEL ?? "false") === "true",
   };
 }

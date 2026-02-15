@@ -4,6 +4,7 @@ import { resolve, dirname, extname, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { WebSocketServer } from "ws";
 import { timingSafeEqual } from "node:crypto";
+import { tunnel as cloudflaredTunnel } from "cloudflared";
 import { SessionManager } from "../session/session-manager.js";
 import { ManagedSessionStore } from "../session/managed-session-store.js";
 import { TmuxProvider } from "../tmux/tmux-provider.js";
@@ -41,6 +42,8 @@ export async function createWSServer(config) {
         serverRef?.shutdown();
         process.exit(0);
     });
+    let tunnelUrl = null;
+    let stopTunnel = null;
     const __dirname = dirname(fileURLToPath(import.meta.url));
     const webRoot = resolve(__dirname, "../web");
     const MIME_TYPES = {
@@ -82,6 +85,7 @@ export async function createWSServer(config) {
             res.end(JSON.stringify({
                 status: "ok",
                 clients: sessionManager.getClientCount(),
+                tunnelUrl: tunnelUrl ?? undefined,
             }));
             return;
         }
@@ -119,9 +123,27 @@ export async function createWSServer(config) {
         start() {
             httpServer.listen(config.port, config.host, () => {
                 console.log(`TerminalSync listening on ws://${config.host}:${config.port}`);
+                if (config.tunnel) {
+                    const localUrl = `http://localhost:${config.port}`;
+                    console.log(`Starting tunnel to ${localUrl}...`);
+                    const { url: urlPromise, stop } = cloudflaredTunnel({
+                        "--url": localUrl,
+                    });
+                    stopTunnel = stop;
+                    urlPromise.then((url) => {
+                        tunnelUrl = url;
+                        console.log(`Tunnel active: ${url}`);
+                    }).catch((err) => {
+                        console.error(`Tunnel failed: ${err}`);
+                    });
+                }
             });
         },
         shutdown() {
+            if (stopTunnel) {
+                stopTunnel();
+                stopTunnel = null;
+            }
             sessionManager.shutdown();
             wss.close();
             httpServer.close();
