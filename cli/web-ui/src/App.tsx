@@ -1,9 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Terminal as XTerm } from "@xterm/xterm";
-import { FitAddon } from "@xterm/addon-fit";
-import Toolbar from "./Toolbar";
-import SessionBar from "./SessionBar";
+import Drawer from "./Drawer";
 import TerminalView from "./Terminal";
+import { Menu, Wifi, WifiOff, Loader2 } from "lucide-react";
 
 export interface Session {
   id: string;
@@ -13,40 +12,36 @@ export interface Session {
   source: string;
 }
 
+type ConnStatus = "connecting" | "connected" | "disconnected" | "error";
+
 function parseHash(): { token: string; sessionId: string | null } {
   if (location.hash.length <= 1) return { token: "", sessionId: null };
   const val = decodeURIComponent(location.hash.slice(1));
   const idx = val.indexOf("/");
-  if (idx !== -1) {
+  if (idx !== -1)
     return { token: val.slice(0, idx), sessionId: val.slice(idx + 1) };
-  }
   return { token: val, sessionId: null };
 }
 
 export default function App() {
-  const { token: hashToken, sessionId: hashSessionId } = parseHash();
+  const { token, sessionId: hashSessionId } = parseHash();
 
-  const [token, setToken] = useState(hashToken);
-  const [status, setStatus] = useState<{ text: string; color: string }>({
-    text: "disconnected",
-    color: "#888",
-  });
-  const [connected, setConnected] = useState(false);
+  const [status, setStatus] = useState<ConnStatus>("disconnected");
   const [sessions, setSessions] = useState<Session[]>([]);
   const [attachedId, setAttachedId] = useState<string | null>(null);
-  const [splashText, setSplashText] = useState(
-    "No session attached. Connect and click a session above.",
-  );
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [termSize, setTermSize] = useState<{
+    cols: number;
+    rows: number;
+  } | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
   const seqRef = useRef(0);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoAttachRef = useRef<string | null>(hashSessionId);
   const termRef = useRef<XTerm | null>(null);
-  const fitRef = useRef<FitAddon | null>(null);
   const attachedIdRef = useRef<string | null>(null);
 
-  // Keep ref in sync
   useEffect(() => {
     attachedIdRef.current = attachedId;
   }, [attachedId]);
@@ -69,17 +64,12 @@ export default function App() {
       if (attachedIdRef.current) {
         sendMsg({ type: "detach", payload: {} });
       }
-      const fit = fitRef.current;
-      if (fit) fit.fit();
-      const term = termRef.current;
+      // Send cols=0, rows=0 — we adopt the session's size
       sendMsg({
         type: "attach",
-        payload: {
-          target: id,
-          cols: term?.cols ?? 80,
-          rows: term?.rows ?? 24,
-        },
+        payload: { target: id, cols: 0, rows: 0 },
       });
+      setDrawerOpen(false);
     },
     [sendMsg],
   );
@@ -100,6 +90,10 @@ export default function App() {
               attachTo(target.id);
             }
           }
+          // Auto-attach to first session if only one exists
+          if (!auto && !attachedIdRef.current && list.length === 1) {
+            attachTo(list[0].id);
+          }
           break;
         }
         case "session_created":
@@ -107,26 +101,20 @@ export default function App() {
           break;
         case "attached": {
           const target = msg.payload.target as string;
+          const cols = msg.payload.cols as number;
+          const rows = msg.payload.rows as number;
           setAttachedId(target);
-          setSplashText("");
+          setTermSize({ cols, rows });
           const term = termRef.current;
-          const fit = fitRef.current;
           if (term) {
             term.clear();
-            if (fit) fit.fit();
             term.focus();
           }
           break;
         }
         case "detached":
           setAttachedId(null);
-          if (msg.payload.reason === "session_exit") {
-            setSplashText("Session exited.");
-          } else {
-            setSplashText(
-              "No session attached. Connect and click a session above.",
-            );
-          }
+          setTermSize(null);
           listSessions();
           break;
         case "error":
@@ -145,12 +133,10 @@ export default function App() {
       );
       ws.binaryType = "arraybuffer";
       wsRef.current = ws;
-
-      setStatus({ text: "connecting...", color: "#e9a945" });
-      setConnected(true);
+      setStatus("connecting");
 
       ws.addEventListener("open", () => {
-        setStatus({ text: "connected", color: "#4caf50" });
+        setStatus("connected");
         sendMsg({ type: "list_sessions", payload: {} });
         pollRef.current = setInterval(listSessions, 3000);
       });
@@ -164,80 +150,86 @@ export default function App() {
       });
 
       ws.addEventListener("close", () => {
-        setStatus({ text: "disconnected", color: "#888" });
-        setConnected(false);
+        setStatus("disconnected");
         wsRef.current = null;
         setAttachedId(null);
+        setTermSize(null);
         setSessions([]);
-        setSplashText(
-          "No session attached. Connect and click a session above.",
-        );
         if (pollRef.current) {
           clearInterval(pollRef.current);
           pollRef.current = null;
         }
+        // Reconnect after 2s
+        setTimeout(() => {
+          if (tok) doConnect(tok);
+        }, 2000);
       });
 
       ws.addEventListener("error", () => {
-        setStatus({ text: "error", color: "#e94560" });
+        setStatus("error");
       });
     },
     [sendMsg, listSessions, handleMessage],
   );
 
-  const handleConnectToggle = useCallback(() => {
-    const ws = wsRef.current;
-    if (ws && ws.readyState <= WebSocket.OPEN) {
-      ws.close();
-      return;
-    }
-    if (!token.trim()) return;
-    doConnect(token.trim());
-  }, [token, doConnect]);
+  // Auto-connect on mount
+  useEffect(() => {
+    if (token) doConnect(token);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Resize handler
-  const handleTermResize = useCallback(() => {
-    const fit = fitRef.current;
-    if (fit) fit.fit();
-    const term = termRef.current;
-    if (term && wsRef.current?.readyState === WebSocket.OPEN && attachedIdRef.current) {
-      sendMsg({
-        type: "resize",
-        payload: { cols: term.cols, rows: term.rows },
-      });
-    }
-  }, [sendMsg]);
-
-  // Terminal input handler
   const handleTermData = useCallback(
     (data: string) => {
-      if (wsRef.current?.readyState === WebSocket.OPEN && attachedIdRef.current) {
+      if (
+        wsRef.current?.readyState === WebSocket.OPEN &&
+        attachedIdRef.current
+      ) {
         sendMsg({ type: "input", payload: { data } });
       }
     },
     [sendMsg],
   );
 
+  const StatusIcon = () => {
+    if (status === "connecting")
+      return <Loader2 size={14} className="animate-spin text-yellow-400" />;
+    if (status === "connected")
+      return <Wifi size={14} className="text-emerald-400" />;
+    if (status === "error")
+      return <WifiOff size={14} className="text-red-400" />;
+    return <WifiOff size={14} className="text-zinc-500" />;
+  };
+
   return (
     <>
-      <Toolbar
-        token={token}
-        onTokenChange={setToken}
-        onConnect={handleConnectToggle}
-        connected={connected}
-        status={status}
-      />
-      <SessionBar
+      {/* Header */}
+      <header className="flex items-center h-11 px-3 gap-3 shrink-0" style={{ background: "var(--bg-surface)", borderBottom: "1px solid var(--border)" }}>
+        <button
+          onClick={() => setDrawerOpen(!drawerOpen)}
+          className="p-1.5 rounded-md hover:bg-white/5 transition-colors"
+        >
+          <Menu size={18} className="text-zinc-400" />
+        </button>
+        <span className="text-sm font-medium text-zinc-300">
+          TerminalSync
+        </span>
+        <div className="flex-1" />
+        <StatusIcon />
+      </header>
+
+      {/* Drawer */}
+      <Drawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
         sessions={sessions}
         attachedId={attachedId}
         onSelect={attachTo}
       />
+
+      {/* Terminal */}
       <TerminalView
         attachedId={attachedId}
-        splashText={splashText}
+        termSize={termSize}
         termRef={termRef}
-        fitRef={fitRef}
-        onResize={handleTermResize}
         onData={handleTermData}
       />
     </>

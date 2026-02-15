@@ -1,23 +1,17 @@
 import { useEffect, useRef, type MutableRefObject } from "react";
 import { Terminal } from "@xterm/xterm";
-import { FitAddon } from "@xterm/addon-fit";
-import "@xterm/xterm/css/xterm.css";
 
 interface TerminalViewProps {
   attachedId: string | null;
-  splashText: string;
+  termSize: { cols: number; rows: number } | null;
   termRef: MutableRefObject<Terminal | null>;
-  fitRef: MutableRefObject<FitAddon | null>;
-  onResize: () => void;
   onData: (data: string) => void;
 }
 
 export default function TerminalView({
   attachedId,
-  splashText,
+  termSize,
   termRef,
-  fitRef,
-  onResize,
   onData,
 }: TerminalViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -30,40 +24,50 @@ export default function TerminalView({
     const term = new Terminal({
       cursorBlink: true,
       fontSize: 13,
+      fontFamily: "'SF Mono', 'Cascadia Code', 'Fira Code', Menlo, monospace",
       theme: {
-        background: "#1a1a2e",
-        foreground: "#e0e0e0",
-        cursor: "#e94560",
+        background: "#0a0a0f",
+        foreground: "#e4e4e7",
+        cursor: "#6366f1",
+        selectionBackground: "#6366f140",
       },
+      scrollback: 5000,
     });
-    const fit = new FitAddon();
-    term.loadAddon(fit);
     term.open(containerRef.current);
-    fit.fit();
-
     termRef.current = term;
-    fitRef.current = fit;
-
     term.onData(onData);
 
-    const handleResize = () => onResize();
-    window.addEventListener("resize", handleResize);
-
     return () => {
-      window.removeEventListener("resize", handleResize);
       term.dispose();
     };
-  }, [termRef, fitRef, onResize, onData]);
+  }, [termRef, onData]);
+
+  // Resize terminal to match server's PTY dimensions
+  useEffect(() => {
+    const term = termRef.current;
+    if (term && termSize && termSize.cols > 0 && termSize.rows > 0) {
+      term.resize(termSize.cols, termSize.rows);
+    }
+  }, [termSize, termRef]);
 
   const showTerminal = attachedId !== null;
 
   return (
-    <div id="terminal-container">
+    <div className="flex-1 overflow-auto relative" style={{ background: "var(--bg)" }}>
       <div
         ref={containerRef}
-        style={{ height: "100%", display: showTerminal ? "" : "none" }}
+        className="inline-block min-w-full p-1"
+        style={{
+          display: showTerminal ? "inline-block" : "none",
+        }}
       />
-      {!showTerminal && <div id="splash">{splashText}</div>}
+      {!showTerminal && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <p className="text-sm text-zinc-600">
+            {attachedId === null ? "Waiting for session..." : ""}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
