@@ -447,7 +447,7 @@ async function cmdConnect() {
         die("Cannot reach server");
     const sessionCount = await checkSessions();
     if (sessionCount === 0) {
-        warn("No shared sessions. Run 'terminalsync share' in a terminal first.");
+        die("No shared sessions. Run 'terminalsync share' in a terminal first.");
     }
     const sessionId = process.env.TERMINALSYNC_SESSION;
     const health = await fetchHealth();
