@@ -99,7 +99,7 @@ export default function TerminalView({
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden" style={{ background: "var(--bg)" }}>
-      <div className="flex-1 overflow-auto relative">
+      <div className="flex-1 overflow-x-auto overflow-y-hidden relative">
         <div
           ref={containerRef}
           className="inline-block min-w-full p-1"
