@@ -218,7 +218,7 @@ export default function TerminalView({
       <div ref={wrapperRef} className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden relative">
         <div
           ref={containerRef}
-          className="w-full h-full"
+          className="min-w-full h-full"
           style={{
             display: showTerminal ? "block" : "none",
             background: "#0a0a0f",
