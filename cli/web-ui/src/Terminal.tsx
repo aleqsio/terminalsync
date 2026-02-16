@@ -62,18 +62,22 @@ export default function TerminalView({
     // with term.scrollLines() + momentum, and add alt-buffer key support.
     const core = (term as any)._core;
     const viewport = core?._viewport;
-    // The horizontal scroll container (parent of the terminal div)
     const hScrollEl = containerRef.current?.parentElement;
     if (viewport) {
-      let lastTouchX = 0;
-      let lastTouchY = 0;
+      // Ring buffer of recent touch samples for velocity calculation.
+      // Quick swipes may only produce 1-2 touchmove events, so EMA
+      // doesn't work. Instead we store recent positions and compute
+      // velocity from the samples at touchend.
+      const samples: { x: number; y: number; t: number }[] = [];
+      const MAX_SAMPLES = 5;
+      const SAMPLE_WINDOW = 100; // only use samples from last 100ms
+
       let accumY = 0;
       let velocityX = 0;
       let velocityY = 0;
-      let lastTime = 0;
       let momentumRaf = 0;
-      const FRICTION = 0.93;
-      const MIN_VELOCITY = 0.3;
+      const FRICTION = 0.95;
+      const MIN_VELOCITY = 0.5;
 
       const getCellHeight = (): number =>
         core?._renderService?.dimensions?.css?.cell?.height ?? 16;
@@ -120,41 +124,59 @@ export default function TerminalView({
         momentumRaf = requestAnimationFrame(momentumStep);
       };
 
-      // Override xterm's viewport touch methods directly
+      const addSample = (x: number, y: number) => {
+        samples.push({ x, y, t: Date.now() });
+        if (samples.length > MAX_SAMPLES) samples.shift();
+      };
+
+      const computeVelocity = () => {
+        const now = Date.now();
+        // Find the oldest sample within the time window
+        let oldest = samples.length - 1;
+        for (let i = 0; i < samples.length; i++) {
+          if (now - samples[i].t <= SAMPLE_WINDOW) {
+            oldest = i;
+            break;
+          }
+        }
+        const last = samples[samples.length - 1];
+        const first = samples[oldest];
+        if (!last || !first || last === first) return;
+        const dt = Math.max(last.t - first.t, 1);
+        // pixels per frame (~16ms)
+        velocityX = ((first.x - last.x) / dt) * 16;
+        velocityY = ((first.y - last.y) / dt) * 16;
+      };
+
       viewport.handleTouchStart = (ev: TouchEvent) => {
         stopMomentum();
-        lastTouchX = ev.touches[0].clientX;
-        lastTouchY = ev.touches[0].clientY;
-        lastTime = Date.now();
-        velocityX = 0;
-        velocityY = 0;
+        samples.length = 0;
         accumY = 0;
+        addSample(ev.touches[0].clientX, ev.touches[0].clientY);
       };
 
       viewport.handleTouchMove = (ev: TouchEvent): boolean => {
         const x = ev.touches[0].clientX;
         const y = ev.touches[0].clientY;
-        const now = Date.now();
-        const dx = lastTouchX - x; // positive = scrolling right
-        const dy = lastTouchY - y; // positive = scrolling down
-        const dt = Math.max(now - lastTime, 1);
-
-        velocityX = velocityX * 0.4 + ((dx / dt) * 16) * 0.6;
-        velocityY = velocityY * 0.4 + ((dy / dt) * 16) * 0.6;
-
-        lastTouchX = x;
-        lastTouchY = y;
-        lastTime = now;
-
-        if (dy !== 0) scrollVertical(dy);
-        if (dx !== 0) scrollHorizontal(dx);
+        const prev = samples[samples.length - 1];
+        if (prev) {
+          const dx = prev.x - x;
+          const dy = prev.y - y;
+          if (dy !== 0) scrollVertical(dy);
+          if (dx !== 0) scrollHorizontal(dx);
+        }
+        addSample(x, y);
         return false; // tell xterm to preventDefault
       };
 
-      // Add touchend listener for momentum (xterm doesn't have one)
       const screenEl = term.element?.querySelector(".xterm-screen");
       if (screenEl) {
-        screenEl.addEventListener("touchend", () => {
+        screenEl.addEventListener("touchend", (ev: TouchEvent) => {
+          // Record final position from changedTouches
+          if (ev.changedTouches.length > 0) {
+            addSample(ev.changedTouches[0].clientX, ev.changedTouches[0].clientY);
+          }
+          computeVelocity();
           if (Math.abs(velocityX) > MIN_VELOCITY || Math.abs(velocityY) > MIN_VELOCITY) {
             momentumRaf = requestAnimationFrame(momentumStep);
           }
