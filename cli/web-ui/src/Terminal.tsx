@@ -22,6 +22,7 @@ export default function TerminalView({
   sessionCount,
 }: TerminalViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const initRef = useRef(false);
 
   const showTerminal = attachedId !== null;
@@ -123,10 +124,22 @@ export default function TerminalView({
       }, { passive: true });
     }
 
+    // Pin the wrapper's vertical scroll to the bottom so the cursor row
+    // is always visible when the terminal is taller than the viewport.
+    const pinToBottom = () => {
+      const w = wrapperRef.current;
+      if (w) w.scrollTop = w.scrollHeight;
+    };
+    pinToBottom();
+    // Re-pin whenever the terminal renders new content
+    const resizeObs = new ResizeObserver(pinToBottom);
+    if (term.element) resizeObs.observe(term.element);
+
     // Flush any buffered data that arrived before the terminal was ready
     onReady();
 
     return () => {
+      resizeObs.disconnect();
       term.dispose();
       termRef.current = null;
       initRef.current = false;
@@ -141,6 +154,9 @@ export default function TerminalView({
     const term = termRef.current;
     if (term && termSize && termSize.cols > 0 && termSize.rows > 0) {
       term.resize(termSize.cols, termSize.rows);
+      // Re-pin scroll to bottom after resize
+      const w = wrapperRef.current;
+      if (w) w.scrollTop = w.scrollHeight;
     }
   }, [termSize, termRef]);
 
@@ -165,14 +181,12 @@ export default function TerminalView({
 
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden" style={{ background: "var(--bg)" }}>
-      <div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden relative">
+      <div ref={wrapperRef} className="flex-1 min-h-0 overflow-x-auto overflow-y-auto relative">
         <div
           ref={containerRef}
-          className="inline-block min-w-full p-1 h-full"
+          className="inline-block min-w-full p-1"
           style={{
             display: showTerminal ? "inline-block" : "none",
-            overflow: "hidden",
-            paddingBottom: 60,
           }}
         />
         {!showTerminal && (
