@@ -133,6 +133,8 @@ export default function TerminalView({
 
     return () => {
       term.dispose();
+      termRef.current = null;
+      initRef.current = false;
     };
   }, [showTerminal, termRef, onData, onReady, termSize]);
 
@@ -164,13 +166,14 @@ export default function TerminalView({
   ];
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden" style={{ background: "var(--bg)" }}>
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden" style={{ background: "var(--bg)" }}>
       <div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden relative">
         <div
           ref={containerRef}
-          className="inline-block min-w-full p-1"
+          className="inline-block min-w-full p-1 h-full"
           style={{
             display: showTerminal ? "inline-block" : "none",
+            overflow: "hidden",
           }}
         />
         {!showTerminal && (

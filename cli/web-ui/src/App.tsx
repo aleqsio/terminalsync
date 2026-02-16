@@ -40,6 +40,7 @@ export default function App() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoAttachRef = useRef<string | null>(hashSessionId);
   const reattachRef = useRef<string | null>(null);
+  const switchingRef = useRef(false);
   const termRef = useRef<XTerm | null>(null);
   const attachedIdRef = useRef<string | null>(null);
   const pendingDataRef = useRef<Uint8Array[]>([]);
@@ -64,6 +65,9 @@ export default function App() {
       const ws = wsRef.current;
       if (!ws || ws.readyState !== WebSocket.OPEN) return;
       if (attachedIdRef.current) {
+        // Mark that we're switching so the "detached" handler doesn't
+        // clear attachedId (which would destroy and re-create the terminal).
+        switchingRef.current = true;
         sendMsg({ type: "detach", payload: {} });
       }
       // Send cols=0, rows=0 — we adopt the session's size
@@ -133,8 +137,13 @@ export default function App() {
           break;
         }
         case "detached":
-          setAttachedId(null);
-          setTermSize(null);
+          if (switchingRef.current) {
+            // Switching sessions — don't clear state (avoids terminal destroy/recreate)
+            switchingRef.current = false;
+          } else {
+            setAttachedId(null);
+            setTermSize(null);
+          }
           listSessions();
           break;
         case "error":
