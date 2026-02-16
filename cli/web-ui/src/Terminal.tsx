@@ -56,6 +56,9 @@ export default function TerminalView({
     const fitAddon = new FitAddon();
     fitAddonRef.current = fitAddon;
     term.loadAddon(fitAddon);
+
+    // Hide container until first fit to prevent jittery reflow
+    containerRef.current.style.visibility = "hidden";
     term.open(containerRef.current);
     termRef.current = term;
     term.onData(onData);
@@ -72,6 +75,8 @@ export default function TerminalView({
       onResize(cols, rows);
     };
     fitRows();
+    // Reveal after initial fit
+    containerRef.current.style.visibility = "visible";
     const resizeObs = new ResizeObserver(() => fitRows());
     resizeObs.observe(containerRef.current);
 
