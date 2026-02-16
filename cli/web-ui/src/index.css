@@ -33,7 +33,10 @@ body {
 }
 
 /* Let xterm handle all touch gestures (scroll, select) without
-   Safari intercepting them for native scroll/bounce */
-.xterm {
+   Safari intercepting them for native scroll/bounce.
+   Must target all descendants — iOS Safari checks touch-action
+   on the actual touched element, not just the ancestor. */
+.xterm,
+.xterm * {
   touch-action: none;
 }
