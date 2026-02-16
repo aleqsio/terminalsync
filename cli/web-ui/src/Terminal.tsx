@@ -121,24 +121,40 @@ export default function TerminalView({
       }) as EventListener);
 
       // Tap to focus — open keyboard on iOS (must be on touchend in the
-      // same gesture to count as a user-initiated focus for iOS Safari)
-      screenEl.addEventListener("touchend", () => {
-        term.focus();
-      }, { passive: true });
+      // same gesture to count as a user-initiated focus for iOS Safari).
+      // Track movement to distinguish taps from scrolls.
+      let touchStartX = 0;
+      let touchStartY = 0;
+      let touchMoved = false;
+      const TAP_THRESHOLD = 10; // px
 
-      // Enable horizontal touch scrolling on the wrapper
-      let startX = 0;
-      let startScrollLeft = 0;
       screenEl.addEventListener("touchstart", (e) => {
         if (e.touches.length === 1) {
-          startX = e.touches[0].clientX;
-          startScrollLeft = wrapperRef.current?.scrollLeft ?? 0;
+          touchStartX = e.touches[0].clientX;
+          touchStartY = e.touches[0].clientY;
+          touchMoved = false;
         }
       }, { passive: true });
+
       screenEl.addEventListener("touchmove", (e) => {
-        if (e.touches.length === 1 && wrapperRef.current) {
-          const dx = startX - e.touches[0].clientX;
-          wrapperRef.current.scrollLeft = startScrollLeft + dx;
+        if (e.touches.length === 1) {
+          const dx = Math.abs(e.touches[0].clientX - touchStartX);
+          const dy = Math.abs(e.touches[0].clientY - touchStartY);
+          if (dx > TAP_THRESHOLD || dy > TAP_THRESHOLD) {
+            touchMoved = true;
+          }
+          // Horizontal scroll on wrapper
+          if (wrapperRef.current) {
+            const scrollDx = touchStartX - e.touches[0].clientX;
+            wrapperRef.current.scrollLeft += scrollDx;
+            touchStartX = e.touches[0].clientX;
+          }
+        }
+      }, { passive: true });
+
+      screenEl.addEventListener("touchend", () => {
+        if (!touchMoved) {
+          term.focus();
         }
       }, { passive: true });
     }

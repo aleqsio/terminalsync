@@ -17,7 +17,7 @@ function ensureConfigFile() {
     if (!existsSync(configPath)) {
         mkdirSync(tsDir, { recursive: true });
         const genToken = randomBytes(32).toString("hex");
-        writeFileSync(configPath, `TERMINALSYNC_TOKEN=${genToken}\nTERMINALSYNC_HOST=0.0.0.0\nTERMINALSYNC_PORT=8089\n`);
+        writeFileSync(configPath, `TERMINALSYNC_TOKEN=${genToken}\nTERMINALSYNC_HOST=0.0.0.0\nTERMINALSYNC_PORT=8089\nTERMINALSYNC_TUNNEL=true\n`);
     }
     return configPath;
 }
@@ -366,7 +366,7 @@ function cleanup() {
 async function cmdConfig() {
     p.intro("terminalsync config");
     const currentConfig = loadConfigFile();
-    const currentTunnel = (currentConfig.TERMINALSYNC_TUNNEL ?? "false") === "true";
+    const currentTunnel = (currentConfig.TERMINALSYNC_TUNNEL ?? "true") === "true";
     const currentPort = currentConfig.TERMINALSYNC_PORT ?? "8089";
     const enableTunnel = await p.confirm({
         message: "Enable tunnel? (share outside local network)",
