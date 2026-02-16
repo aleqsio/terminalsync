@@ -56,137 +56,57 @@ export default function TerminalView({
       term.textarea.setAttribute("autocomplete", "off");
     }
 
-    // Replace xterm's touch scrolling by monkey-patching the internal
-    // viewport methods. xterm's built-in handler manipulates a hidden
-    // scrollTop div which is sluggish on mobile Safari. We replace it
-    // with term.scrollLines() + momentum, and add alt-buffer key support.
-    const core = (term as any)._core;
-    const viewport = core?._viewport;
-    if (viewport) {
-      // Ring buffer of recent touch samples for velocity calculation.
-      const samples: { x: number; y: number; t: number }[] = [];
-      const MAX_SAMPLES = 5;
-      const SAMPLE_WINDOW = 150; // use samples from last 150ms
-
+    // xterm 6.x has built-in Gesture-based touch scrolling with inertia
+    // (via the Gesture class in scrollable/touch.ts). We intercept the
+    // gesture events to add alt-buffer support (arrow keys) and horizontal
+    // scrolling, following the approach from xterm PR #5685.
+    const screenEl = term.screenElement;
+    if (screenEl) {
+      const core = (term as any)._core;
+      const GESTURE_CHANGE = "-xterm-gesturechange";
+      const GESTURE_START = "-xterm-gesturestart";
       let accumY = 0;
-      let velocityX = 0;
-      let velocityY = 0;
-      let momentumRaf = 0;
-      const FRICTION = 0.95;
-      const MIN_VELOCITY = 0.5;
 
       const getCellHeight = (): number =>
         core?._renderService?.dimensions?.css?.cell?.height ?? 16;
 
-      // Look up the horizontal scroll container fresh each time
-      // (the overflow-x-auto wrapper around the terminal)
       const getHScrollEl = (): HTMLElement | null =>
         containerRef.current?.parentElement ?? null;
 
-      const scrollVertical = (px: number) => {
-        const cellH = getCellHeight();
-        accumY += px;
-        const lines = Math.trunc(accumY / cellH);
-        if (lines === 0) return;
-        accumY -= lines * cellH;
-
-        if (term.buffer.active.type !== "normal") {
-          const seq = lines > 0 ? "\x1b[B" : "\x1b[A";
-          for (let i = 0; i < Math.abs(lines); i++) {
-            onData(seq);
-          }
-        } else {
-          term.scrollLines(lines);
-        }
-      };
-
-      const scrollHorizontal = (px: number) => {
-        const el = getHScrollEl();
-        if (el) el.scrollLeft += px;
-      };
-
-      const stopMomentum = () => {
-        if (momentumRaf) {
-          cancelAnimationFrame(momentumRaf);
-          momentumRaf = 0;
-        }
-        velocityX = 0;
-        velocityY = 0;
-      };
-
-      const momentumStep = () => {
-        velocityX *= FRICTION;
-        velocityY *= FRICTION;
-        if (Math.abs(velocityX) < MIN_VELOCITY && Math.abs(velocityY) < MIN_VELOCITY) {
-          momentumRaf = 0;
-          return;
-        }
-        if (Math.abs(velocityY) >= MIN_VELOCITY) scrollVertical(velocityY);
-        if (Math.abs(velocityX) >= MIN_VELOCITY) scrollHorizontal(velocityX);
-        momentumRaf = requestAnimationFrame(momentumStep);
-      };
-
-      const addSample = (x: number, y: number) => {
-        samples.push({ x, y, t: Date.now() });
-        if (samples.length > MAX_SAMPLES) samples.shift();
-      };
-
-      const computeVelocity = () => {
-        if (samples.length < 2) return;
-        const now = Date.now();
-        // Find the oldest sample within the time window
-        let oldest = samples.length - 1;
-        for (let i = 0; i < samples.length; i++) {
-          if (now - samples[i].t <= SAMPLE_WINDOW) {
-            oldest = i;
-            break;
-          }
-        }
-        const last = samples[samples.length - 1];
-        const first = samples[oldest];
-        if (!last || !first || last === first) return;
-        const dt = Math.max(last.t - first.t, 1);
-        // pixels per frame (~16ms)
-        velocityX = ((first.x - last.x) / dt) * 16;
-        velocityY = ((first.y - last.y) / dt) * 16;
-      };
-
-      viewport.handleTouchStart = (ev: TouchEvent) => {
-        stopMomentum();
-        samples.length = 0;
+      // Reset accumulator on gesture start
+      screenEl.addEventListener(GESTURE_START, () => {
         accumY = 0;
-        addSample(ev.touches[0].clientX, ev.touches[0].clientY);
-      };
+      }, true);
 
-      viewport.handleTouchMove = (ev: TouchEvent): boolean => {
-        const x = ev.touches[0].clientX;
-        const y = ev.touches[0].clientY;
-        const prev = samples[samples.length - 1];
-        if (prev) {
-          const dx = prev.x - x;
-          const dy = prev.y - y;
-          if (dy !== 0) scrollVertical(dy);
-          if (dx !== 0) scrollHorizontal(dx);
+      // Intercept gesture change events in capture phase to handle
+      // alt-buffer scrolling (convert to arrow keys) and horizontal scroll.
+      screenEl.addEventListener(GESTURE_CHANGE, ((e: Event) => {
+        const ge = e as Event & { translationX: number; translationY: number };
+
+        // Horizontal scrolling — always handle (xterm doesn't)
+        if (ge.translationX) {
+          const el = getHScrollEl();
+          if (el) el.scrollLeft -= ge.translationX;
         }
-        addSample(x, y);
-        return false; // tell xterm to preventDefault
-      };
 
-      const screenEl = term.element?.querySelector(".xterm-screen");
-      if (screenEl) {
-        screenEl.addEventListener("touchend", () => {
-          // Don't add a sample here — changedTouches has the same
-          // position as the last touchmove but a later timestamp,
-          // which would dilute the velocity to near-zero.
-          computeVelocity();
-          if (Math.abs(velocityX) > MIN_VELOCITY || Math.abs(velocityY) > MIN_VELOCITY) {
-            momentumRaf = requestAnimationFrame(momentumStep);
+        // Alt buffer: convert vertical scroll to arrow key sequences
+        if (term.buffer.active.type !== "normal") {
+          e.stopImmediatePropagation();
+          e.preventDefault();
+
+          const cellH = getCellHeight();
+          accumY += ge.translationY;
+          const lines = Math.trunc(accumY / cellH);
+          if (lines !== 0) {
+            accumY -= lines * cellH;
+            const seq = lines < 0 ? "\x1b[B" : "\x1b[A";
+            for (let i = 0; i < Math.abs(lines); i++) {
+              onData(seq);
+            }
           }
-        }, { passive: true });
-        screenEl.addEventListener("touchcancel", () => {
-          stopMomentum();
-        }, { passive: true });
-      }
+        }
+        // Normal buffer: let xterm's built-in Viewport handler do the scrolling
+      }) as EventListener, true);
     }
 
     // Apply size immediately if already known
