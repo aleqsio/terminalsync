@@ -27,6 +27,8 @@ mkdir -p "$INSTALL_DIR" "$BIN_DIR"
 if [ -d "$REPO_DIR/.git" ]; then
   info "Updating..."
   cd "$REPO_DIR"
+  git clean -fd
+  git checkout .
   git pull --ff-only
 else
   info "Cloning..."
