@@ -172,6 +172,7 @@ export default function TerminalView({
           style={{
             display: showTerminal ? "inline-block" : "none",
             overflow: "hidden",
+            paddingBottom: 60,
           }}
         />
         {!showTerminal && (
