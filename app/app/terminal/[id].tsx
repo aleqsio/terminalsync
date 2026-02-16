@@ -3,11 +3,13 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import {
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 import { getTerminalHtml } from "../../lib/terminalHtml";
 import { saveConnection } from "../../lib/connectionStorage";
@@ -21,6 +23,7 @@ export default function TerminalDetailScreen() {
     token: string;
   }>();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const webviewRef = useRef<WebView>(null);
   const [connStatus, setConnStatus] = useState<string>("connecting");
 
@@ -92,26 +95,29 @@ export default function TerminalDetailScreen() {
         keyboardDisplayRequiresUserAction={false}
       />
 
-      <View style={styles.quickKeys}>
-        {["Tab", "Esc", "Ctrl+C", "Ctrl+D", "Up", "Down"].map((label) => (
-          <Pressable
-            key={label}
-            style={styles.quickKey}
-            onPress={() => {
-              const keyMap: Record<string, string> = {
-                Tab: "\t",
-                Esc: "\x1b",
-                "Ctrl+C": "\x03",
-                "Ctrl+D": "\x04",
-                Up: "\x1b[A",
-                Down: "\x1b[B",
-              };
-              sendToWebView(keyMap[label]);
-            }}
-          >
-            <Text style={styles.quickKeyText}>{label}</Text>
-          </Pressable>
-        ))}
+      <View style={[styles.quickKeys, { paddingBottom: Math.max(insets.bottom, 6) }]}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickKeysScroll}>
+          {["Enter", "Tab", "Esc", "Ctrl+C", "Ctrl+D", "Up", "Down"].map((label) => (
+            <Pressable
+              key={label}
+              style={styles.quickKey}
+              onPress={() => {
+                const keyMap: Record<string, string> = {
+                  Enter: "\r",
+                  Tab: "\t",
+                  Esc: "\x1b",
+                  "Ctrl+C": "\x03",
+                  "Ctrl+D": "\x04",
+                  Up: "\x1b[A",
+                  Down: "\x1b[B",
+                };
+                sendToWebView(keyMap[label]);
+              }}
+            >
+              <Text style={styles.quickKeyText}>{label}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
       </View>
     </KeyboardAvoidingView>
   );
@@ -137,20 +143,21 @@ const styles = StyleSheet.create({
     backgroundColor: "#0f0f1a",
   },
   quickKeys: {
-    flexDirection: "row",
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "#2a2a40",
     paddingHorizontal: 8,
     paddingVertical: 6,
     backgroundColor: "#1a1a2e",
-    gap: 6,
-    paddingBottom: Platform.OS === "ios" ? 28 : 6,
+  },
+  quickKeysScroll: {
+    flexDirection: "row",
+    gap: 8,
   },
   quickKey: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     backgroundColor: "#2a2a40",
-    borderRadius: 6,
+    borderRadius: 8,
   },
   quickKeyText: {
     color: "#aaa",

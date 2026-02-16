@@ -105,6 +105,15 @@ export interface DetachedResponse {
   };
 }
 
+export interface ResizedResponse {
+  type: "resized";
+  seq: number;
+  payload: {
+    cols: number;
+    rows: number;
+  };
+}
+
 export interface ErrorResponse {
   type: "error";
   seq: number;
@@ -118,6 +127,7 @@ export type ServerMessage =
   | SessionListResponse
   | SessionCreatedResponse
   | AttachedResponse
+  | ResizedResponse
   | DetachedResponse
   | ErrorResponse;
 

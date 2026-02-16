@@ -8,12 +8,13 @@ import {
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { loadConnection, type ConnectionInfo } from "../lib/connectionStorage";
 import { useTerminalSyncContext } from "../lib/TerminalSyncContext";
 
 export default function HomeScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { status, sessions, connect, disconnect } = useTerminalSyncContext();
   const [savedConn, setSavedConn] = useState<ConnectionInfo | null>(null);
 
@@ -69,7 +70,7 @@ export default function HomeScreen() {
       <FlatList
         data={sessions}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingBottom: Math.max(insets.bottom, 16) }]}
         renderItem={({ item }) => (
           <Pressable
             style={styles.sessionRow}
@@ -162,7 +163,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#1a1a2e",
     borderRadius: 10,
-    padding: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
     marginBottom: 10,
   },
   sessionInfo: {

@@ -546,6 +546,18 @@ async function cmdUninstall() {
             console.log(`Removed PATH entry from ${rc}`);
         }
     }
+    // Remove npm global link if present
+    try {
+        const globalBin = execSync("npm bin -g", { encoding: "utf-8" }).trim();
+        const globalLink = join(globalBin, "terminalsync");
+        if (existsSync(globalLink)) {
+            execSync("npm uninstall -g terminalsync", { stdio: "inherit" });
+            console.log("Removed global npm link");
+        }
+    }
+    catch {
+        // npm global check failed, skip
+    }
     // Remove install directory
     if (existsSync(installDir)) {
         try {
@@ -595,7 +607,7 @@ async function checkForUpdate() {
         const isNewer = rM > lM || (rM === lM && rm > lm) || (rM === lM && rm === lm && rp > lp);
         if (isNewer) {
             process.stderr.write(`\x1b[33m[terminalsync] Update available: ${localVersion} → ${remoteVersion}\x1b[0m\n` +
-                `\x1b[33m[terminalsync] Run: curl -fsSL https://aleqsio.com/install.sh | bash\x1b[0m\n`);
+                `\x1b[33m[terminalsync] Run: terminalsync update\x1b[0m\n`);
         }
     }
     catch {
@@ -607,7 +619,7 @@ async function cmdUpdate() {
     const { execSync } = await import("child_process");
     const repoDir = join(homedir(), ".terminalsync", "repo");
     if (!existsSync(join(repoDir, ".git"))) {
-        die("Not installed via git. Run the install script instead:\n  curl -fsSL https://aleqsio.com/install.sh | bash");
+        die("Not installed via git. Run the install script instead:\n  curl -fsSL https://aleqsio.com/terminalsync/install.sh | bash");
     }
     console.log("Updating TerminalSync...");
     try {
@@ -616,7 +628,7 @@ async function cmdUpdate() {
         console.log("\nUpdated successfully!");
     }
     catch {
-        die("Update failed. Try running the install script manually:\n  curl -fsSL https://aleqsio.com/install.sh | bash");
+        die("Update failed. Try running the install script manually:\n  curl -fsSL https://aleqsio.com/terminalsync/install.sh | bash");
     }
 }
 // --- Main ---

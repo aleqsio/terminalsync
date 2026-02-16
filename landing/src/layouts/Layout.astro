@@ -1,45 +1,74 @@
 ---
 interface Props {
-  title?: string;
-  description?: string;
+	title: string;
+	description: string;
 }
 
-const {
-  title = "TerminalSync — Your terminal, everywhere",
-  description = "One command. One QR scan. Full terminal access from your phone. Monitor builds, approve Claude Code prompts, and debug from anywhere."
-} = Astro.props;
+const { title, description } = Astro.props;
 ---
 
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content={description} />
-    <meta name="generator" content={Astro.generator} />
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="description" content={description} />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="generator" content={Astro.generator} />
+		<title>{title}</title>
 
-    <!-- Open Graph -->
-    <meta property="og:title" content={title} />
-    <meta property="og:description" content={description} />
-    <meta property="og:type" content="website" />
-
-    <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="icon" href="/favicon.ico" />
-
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-
-    <title>{title}</title>
-
-    <!-- Global Styles -->
-    <style is:global>
-      @import "../styles/global.css";
-    </style>
-  </head>
-  <body>
-    <slot />
-  </body>
+		<!-- Fonts -->
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+	</head>
+	<body>
+		<slot />
+	</body>
 </html>
+
+<style is:global>
+	:root {
+		--bg: #0A0A0A;
+		--surface: #111111;
+		--surface-hover: #141414;
+		--border: #1F1F1F;
+		--border-hover: #2A2A2A;
+		--text-primary: #FFFFFF;
+		--text-secondary: #A0A0A0;
+		--text-muted: #666666;
+		--accent: #00F5A0;
+		--accent-dark: #00D98F;
+		--error: #FF4757;
+		--warning: #FFB800;
+		--blue: #4A9EFF;
+		--code-bg: #1A1A1A;
+
+		--font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+		--font-mono: 'JetBrains Mono', 'Courier New', monospace;
+	}
+
+	* {
+		margin: 0;
+		padding: 0;
+		box-sizing: border-box;
+	}
+
+	html {
+		scroll-behavior: smooth;
+	}
+
+	body {
+		font-family: var(--font-sans);
+		background: var(--bg);
+		color: var(--text-primary);
+		line-height: 1.6;
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+	}
+
+	::selection {
+		background: var(--accent);
+		color: var(--bg);
+	}
+</style>

@@ -58,6 +58,10 @@ html,body{height:100%;overflow:hidden;background:#0f0f1a;}
       var msg=JSON.parse(evt.data);
       if(msg.type==='attached'){
         window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify({type:'status',status:'attached'}));
+      } else if(msg.type==='resized'){
+        // On mobile the terminal always fits its container via fitAddon.fit().
+        // The server-mandated size is used for PTY output formatting but we
+        // don't override the fitted size here — that would break keyboard focus.
       } else if(msg.type==='detached'){
         window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify({type:'status',status:'detached',reason:msg.payload.reason}));
       } else if(msg.type==='error'){
