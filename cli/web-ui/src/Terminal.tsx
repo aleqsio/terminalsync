@@ -123,11 +123,6 @@ export default function TerminalView({
       }, { passive: true });
     }
 
-    // Apply size immediately if already known
-    if (termSize && termSize.cols > 0 && termSize.rows > 0) {
-      term.resize(termSize.cols, termSize.rows);
-    }
-
     // Flush any buffered data that arrived before the terminal was ready
     onReady();
 
@@ -136,7 +131,10 @@ export default function TerminalView({
       termRef.current = null;
       initRef.current = false;
     };
-  }, [showTerminal, termRef, onData, onReady, termSize]);
+    // termSize intentionally excluded — the resize effect handles size changes.
+    // Including it here would destroy & recreate the terminal on every resize.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showTerminal, termRef, onData, onReady]);
 
   // Resize terminal to match server's PTY dimensions
   useEffect(() => {
