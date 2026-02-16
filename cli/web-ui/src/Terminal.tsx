@@ -57,8 +57,9 @@ export default function TerminalView({
     fitAddonRef.current = fitAddon;
     term.loadAddon(fitAddon);
 
-    // Hide container until first fit to prevent jittery reflow
-    containerRef.current.style.visibility = "hidden";
+    // Hide xterm content until first fit to prevent jittery reflow.
+    // Use opacity so the container still occupies space for measurement.
+    containerRef.current.style.opacity = "0";
     term.open(containerRef.current);
     termRef.current = term;
     term.onData(onData);
@@ -76,7 +77,9 @@ export default function TerminalView({
     };
     fitRows();
     // Reveal after initial fit
-    containerRef.current.style.visibility = "visible";
+    requestAnimationFrame(() => {
+      if (containerRef.current) containerRef.current.style.opacity = "1";
+    });
     const resizeObs = new ResizeObserver(() => fitRows());
     resizeObs.observe(containerRef.current);
 
