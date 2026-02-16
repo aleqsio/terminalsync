@@ -26,6 +26,7 @@ export default function TerminalView({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const initRef = useRef(false);
   const hostColsRef = useRef<number | null>(hostCols);
+  hostColsRef.current = hostCols; // sync immediately so fitRows() sees it
   const fitAddonRef = useRef<FitAddon | null>(null);
 
   const showTerminal = attachedId !== null;
