@@ -62,15 +62,11 @@ export default function TerminalView({
     // with term.scrollLines() + momentum, and add alt-buffer key support.
     const core = (term as any)._core;
     const viewport = core?._viewport;
-    const hScrollEl = containerRef.current?.parentElement;
     if (viewport) {
       // Ring buffer of recent touch samples for velocity calculation.
-      // Quick swipes may only produce 1-2 touchmove events, so EMA
-      // doesn't work. Instead we store recent positions and compute
-      // velocity from the samples at touchend.
       const samples: { x: number; y: number; t: number }[] = [];
       const MAX_SAMPLES = 5;
-      const SAMPLE_WINDOW = 100; // only use samples from last 100ms
+      const SAMPLE_WINDOW = 150; // use samples from last 150ms
 
       let accumY = 0;
       let velocityX = 0;
@@ -81,6 +77,11 @@ export default function TerminalView({
 
       const getCellHeight = (): number =>
         core?._renderService?.dimensions?.css?.cell?.height ?? 16;
+
+      // Look up the horizontal scroll container fresh each time
+      // (the overflow-x-auto wrapper around the terminal)
+      const getHScrollEl = (): HTMLElement | null =>
+        containerRef.current?.parentElement ?? null;
 
       const scrollVertical = (px: number) => {
         const cellH = getCellHeight();
@@ -100,7 +101,8 @@ export default function TerminalView({
       };
 
       const scrollHorizontal = (px: number) => {
-        if (hScrollEl) hScrollEl.scrollLeft += px;
+        const el = getHScrollEl();
+        if (el) el.scrollLeft += px;
       };
 
       const stopMomentum = () => {
@@ -130,6 +132,7 @@ export default function TerminalView({
       };
 
       const computeVelocity = () => {
+        if (samples.length < 2) return;
         const now = Date.now();
         // Find the oldest sample within the time window
         let oldest = samples.length - 1;
@@ -171,15 +174,17 @@ export default function TerminalView({
 
       const screenEl = term.element?.querySelector(".xterm-screen");
       if (screenEl) {
-        screenEl.addEventListener("touchend", (ev: TouchEvent) => {
-          // Record final position from changedTouches
-          if (ev.changedTouches.length > 0) {
-            addSample(ev.changedTouches[0].clientX, ev.changedTouches[0].clientY);
-          }
+        screenEl.addEventListener("touchend", () => {
+          // Don't add a sample here — changedTouches has the same
+          // position as the last touchmove but a later timestamp,
+          // which would dilute the velocity to near-zero.
           computeVelocity();
           if (Math.abs(velocityX) > MIN_VELOCITY || Math.abs(velocityY) > MIN_VELOCITY) {
             momentumRaf = requestAnimationFrame(momentumStep);
           }
+        }, { passive: true });
+        screenEl.addEventListener("touchcancel", () => {
+          stopMomentum();
         }, { passive: true });
       }
     }
