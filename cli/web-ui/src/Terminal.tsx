@@ -64,16 +64,20 @@ export default function TerminalView({
     termRef.current = term;
     term.onData(onData);
 
-    // Fit rows to container height, keep host's cols for width (horizontal scroll)
+    // Fit rows to container height, keep host's cols for width (horizontal scroll).
+    // Only send resize to server when we have hostCols — otherwise we'd shrink
+    // the PTY to the narrow mobile screen width before the host width arrives.
     const fitRows = () => {
       const dims = fitAddon.proposeDimensions();
       if (!dims) return;
-      const cols = hostColsRef.current || dims.cols;
+      const hCols = hostColsRef.current;
+      const cols = hCols || dims.cols;
       const rows = dims.rows;
       if (cols !== term.cols || rows !== term.rows) {
         term.resize(cols, rows);
       }
-      onResize(cols, rows);
+      // Only notify server when we know the host width
+      if (hCols) onResize(cols, rows);
     };
     fitRows();
     // Reveal after initial fit
