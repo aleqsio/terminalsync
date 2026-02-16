@@ -62,10 +62,14 @@ export default function TerminalView({
     // with term.scrollLines() + momentum, and add alt-buffer key support.
     const core = (term as any)._core;
     const viewport = core?._viewport;
+    // The horizontal scroll container (parent of the terminal div)
+    const hScrollEl = containerRef.current?.parentElement;
     if (viewport) {
+      let lastTouchX = 0;
       let lastTouchY = 0;
-      let accum = 0;
-      let velocity = 0;
+      let accumY = 0;
+      let velocityX = 0;
+      let velocityY = 0;
       let lastTime = 0;
       let momentumRaf = 0;
       const FRICTION = 0.93;
@@ -74,12 +78,12 @@ export default function TerminalView({
       const getCellHeight = (): number =>
         core?._renderService?.dimensions?.css?.cell?.height ?? 16;
 
-      const scrollByPixels = (px: number) => {
+      const scrollVertical = (px: number) => {
         const cellH = getCellHeight();
-        accum += px;
-        const lines = Math.trunc(accum / cellH);
+        accumY += px;
+        const lines = Math.trunc(accumY / cellH);
         if (lines === 0) return;
-        accum -= lines * cellH;
+        accumY -= lines * cellH;
 
         if (term.buffer.active.type !== "normal") {
           const seq = lines > 0 ? "\x1b[B" : "\x1b[A";
@@ -91,46 +95,59 @@ export default function TerminalView({
         }
       };
 
+      const scrollHorizontal = (px: number) => {
+        if (hScrollEl) hScrollEl.scrollLeft += px;
+      };
+
       const stopMomentum = () => {
         if (momentumRaf) {
           cancelAnimationFrame(momentumRaf);
           momentumRaf = 0;
         }
-        velocity = 0;
+        velocityX = 0;
+        velocityY = 0;
       };
 
       const momentumStep = () => {
-        velocity *= FRICTION;
-        if (Math.abs(velocity) < MIN_VELOCITY) {
+        velocityX *= FRICTION;
+        velocityY *= FRICTION;
+        if (Math.abs(velocityX) < MIN_VELOCITY && Math.abs(velocityY) < MIN_VELOCITY) {
           momentumRaf = 0;
           return;
         }
-        scrollByPixels(velocity);
+        if (Math.abs(velocityY) >= MIN_VELOCITY) scrollVertical(velocityY);
+        if (Math.abs(velocityX) >= MIN_VELOCITY) scrollHorizontal(velocityX);
         momentumRaf = requestAnimationFrame(momentumStep);
       };
 
       // Override xterm's viewport touch methods directly
       viewport.handleTouchStart = (ev: TouchEvent) => {
         stopMomentum();
+        lastTouchX = ev.touches[0].clientX;
         lastTouchY = ev.touches[0].clientY;
         lastTime = Date.now();
-        velocity = 0;
-        accum = 0;
+        velocityX = 0;
+        velocityY = 0;
+        accumY = 0;
       };
 
       viewport.handleTouchMove = (ev: TouchEvent): boolean => {
+        const x = ev.touches[0].clientX;
         const y = ev.touches[0].clientY;
         const now = Date.now();
-        const dy = lastTouchY - y;
+        const dx = lastTouchX - x; // positive = scrolling right
+        const dy = lastTouchY - y; // positive = scrolling down
         const dt = Math.max(now - lastTime, 1);
 
-        const instantV = (dy / dt) * 16;
-        velocity = velocity * 0.4 + instantV * 0.6;
+        velocityX = velocityX * 0.4 + ((dx / dt) * 16) * 0.6;
+        velocityY = velocityY * 0.4 + ((dy / dt) * 16) * 0.6;
 
+        lastTouchX = x;
         lastTouchY = y;
         lastTime = now;
 
-        if (dy !== 0) scrollByPixels(dy);
+        if (dy !== 0) scrollVertical(dy);
+        if (dx !== 0) scrollHorizontal(dx);
         return false; // tell xterm to preventDefault
       };
 
@@ -138,7 +155,7 @@ export default function TerminalView({
       const screenEl = term.element?.querySelector(".xterm-screen");
       if (screenEl) {
         screenEl.addEventListener("touchend", () => {
-          if (Math.abs(velocity) > MIN_VELOCITY) {
+          if (Math.abs(velocityX) > MIN_VELOCITY || Math.abs(velocityY) > MIN_VELOCITY) {
             momentumRaf = requestAnimationFrame(momentumStep);
           }
         }, { passive: true });
