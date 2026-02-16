@@ -56,10 +56,10 @@ export default function TerminalView({
       term.textarea.setAttribute("autocomplete", "off");
     }
 
-    // xterm 6.x has built-in Gesture-based touch scrolling with inertia
-    // (via the Gesture class in scrollable/touch.ts). We intercept the
-    // gesture events to add alt-buffer support (arrow keys) and horizontal
-    // scrolling, following the approach from xterm PR #5685.
+    // xterm 6.x has built-in Gesture-based touch scrolling with inertia.
+    // We add two things on top:
+    // 1. Alt-buffer support: intercept gesture events → arrow key sequences
+    // 2. Horizontal scrolling: track raw touch events → update wrapper scrollLeft
     const screenEl = term.screenElement;
     if (screenEl) {
       const core = (term as any)._core;
@@ -70,27 +70,15 @@ export default function TerminalView({
       const getCellHeight = (): number =>
         core?._renderService?.dimensions?.css?.cell?.height ?? 16;
 
-      const getHScrollEl = (): HTMLElement | null =>
-        containerRef.current?.parentElement ?? null;
-
       // Reset accumulator on gesture start
       screenEl.addEventListener(GESTURE_START, () => {
         accumY = 0;
-      }, true);
+      });
 
-      // Intercept gesture change events in capture phase to handle
-      // alt-buffer scrolling (convert to arrow keys) and horizontal scroll.
+      // Alt buffer: intercept gesture change → arrow key sequences
       screenEl.addEventListener(GESTURE_CHANGE, ((e: Event) => {
-        const ge = e as Event & { translationX: number; translationY: number };
-
-        // Horizontal scrolling — always handle (xterm doesn't)
-        if (ge.translationX) {
-          const el = getHScrollEl();
-          if (el) el.scrollLeft -= ge.translationX;
-        }
-
-        // Alt buffer: convert vertical scroll to arrow key sequences
         if (term.buffer.active.type !== "normal") {
+          const ge = e as Event & { translationY: number };
           e.stopImmediatePropagation();
           e.preventDefault();
 
@@ -105,8 +93,34 @@ export default function TerminalView({
             }
           }
         }
-        // Normal buffer: let xterm's built-in Viewport handler do the scrolling
-      }) as EventListener, true);
+      }) as EventListener);
+
+      // Horizontal scrolling via raw touch events.
+      // xterm's Gesture class handles vertical; we handle horizontal on
+      // the overflow-x-auto wrapper. touch-action:none blocks native scroll.
+      let lastTouchX: number | null = null;
+      const getHScrollEl = (): HTMLElement | null =>
+        containerRef.current?.parentElement ?? null;
+
+      screenEl.addEventListener("touchstart", (e: TouchEvent) => {
+        lastTouchX = e.touches[0].clientX;
+      }, { passive: true });
+
+      screenEl.addEventListener("touchmove", (e: TouchEvent) => {
+        if (lastTouchX !== null) {
+          const x = e.touches[0].clientX;
+          const dx = lastTouchX - x;
+          lastTouchX = x;
+          if (dx !== 0) {
+            const el = getHScrollEl();
+            if (el) el.scrollLeft += dx;
+          }
+        }
+      }, { passive: true });
+
+      screenEl.addEventListener("touchend", () => {
+        lastTouchX = null;
+      }, { passive: true });
     }
 
     // Apply size immediately if already known
@@ -151,7 +165,7 @@ export default function TerminalView({
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden" style={{ background: "var(--bg)" }}>
-      <div className="flex-1 overflow-x-auto overflow-y-hidden relative">
+      <div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden relative">
         <div
           ref={containerRef}
           className="inline-block min-w-full p-1"
