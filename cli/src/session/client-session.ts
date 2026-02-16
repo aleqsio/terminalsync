@@ -409,7 +409,7 @@ export class ClientSession {
     this.state = "BROWSING";
   }
 
-  private sendJSON(msg: ServerMessage): void {
+  sendJSON(msg: ServerMessage): void {
     if (this.ws.readyState === this.ws.OPEN) {
       this.ws.send(JSON.stringify(msg));
     }

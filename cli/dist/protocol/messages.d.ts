@@ -64,6 +64,13 @@ export interface SessionCreatedResponse {
         name: string;
     };
 }
+export interface SessionRemovedResponse {
+    type: "session_removed";
+    seq: number;
+    payload: {
+        id: string;
+    };
+}
 export interface AttachedResponse {
     type: "attached";
     seq: number;
@@ -97,5 +104,5 @@ export interface ErrorResponse {
         message: string;
     };
 }
-export type ServerMessage = SessionListResponse | SessionCreatedResponse | AttachedResponse | ResizedResponse | DetachedResponse | ErrorResponse;
+export type ServerMessage = SessionListResponse | SessionCreatedResponse | SessionRemovedResponse | AttachedResponse | ResizedResponse | DetachedResponse | ErrorResponse;
 export declare function parseClientMessage(data: string): ClientMessage;

@@ -25,6 +25,16 @@ export class SessionManager {
 
     store.on("idle", () => this.checkIdle());
     store.on("active", () => this.cancelIdleTimer());
+    store.on("session_removed", (sessionId: string) => {
+      // Notify all clients so they refresh their session list
+      for (const client of this.clients.values()) {
+        client.sendJSON({
+          type: "session_removed",
+          seq: 0,
+          payload: { id: sessionId },
+        });
+      }
+    });
   }
 
   addClient(ws: WebSocket): ClientSession | null {

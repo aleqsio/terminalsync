@@ -119,6 +119,7 @@ export default function App() {
           break;
         }
         case "session_created":
+        case "session_removed":
           listSessions();
           break;
         case "attached": {

@@ -5,8 +5,10 @@ export class ManagedSessionStore extends EventEmitter {
     create(opts) {
         const session = new ManagedSession(opts);
         session.on("exit", () => {
-            // Keep exited sessions in the store for a while so clients can see the exit status.
-            // They'll be cleaned up on next shutdown or explicit removal.
+            // Remove exited sessions from the store so clients see them disappear
+            this.sessions.delete(session.id);
+            session.removeAllListeners();
+            this.emit("session_removed", session.id);
             if (this.getRunningCount() === 0) {
                 this.emit("idle");
             }

@@ -1,4 +1,5 @@
 import type { WebSocket } from "ws";
+import type { ServerMessage } from "../protocol/messages.js";
 import type { Config } from "../config.js";
 import type { ManagedSessionStore } from "./managed-session-store.js";
 import type { TmuxProvider } from "../tmux/tmux-provider.js";
@@ -27,5 +28,5 @@ export declare class ClientSession {
     private detachFromManaged;
     private detachFromTmux;
     cleanup(): void;
-    private sendJSON;
+    sendJSON(msg: ServerMessage): void;
 }

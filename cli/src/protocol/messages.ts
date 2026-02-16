@@ -86,6 +86,14 @@ export interface SessionCreatedResponse {
   };
 }
 
+export interface SessionRemovedResponse {
+  type: "session_removed";
+  seq: number;
+  payload: {
+    id: string;
+  };
+}
+
 export interface AttachedResponse {
   type: "attached";
   seq: number;
@@ -126,6 +134,7 @@ export interface ErrorResponse {
 export type ServerMessage =
   | SessionListResponse
   | SessionCreatedResponse
+  | SessionRemovedResponse
   | AttachedResponse
   | ResizedResponse
   | DetachedResponse

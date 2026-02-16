@@ -13,6 +13,16 @@ export class SessionManager {
         this.onIdle = onIdle ?? null;
         store.on("idle", () => this.checkIdle());
         store.on("active", () => this.cancelIdleTimer());
+        store.on("session_removed", (sessionId) => {
+            // Notify all clients so they refresh their session list
+            for (const client of this.clients.values()) {
+                client.sendJSON({
+                    type: "session_removed",
+                    seq: 0,
+                    payload: { id: sessionId },
+                });
+            }
+        });
     }
     addClient(ws) {
         if (this.clients.size >= this.config.maxClients) {
