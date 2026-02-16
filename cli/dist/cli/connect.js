@@ -648,7 +648,10 @@ Commands:
   uninstall        Remove TerminalSync from this machine
   help             Show this help message
 
-Run 'terminalsync config' to enable tunnel mode for sharing outside your local network.`;
+Notes:
+  Sessions use Cloudflare Tunnels by default for secure remote access.
+  Close a session by typing 'exit' in the shared terminal.
+  Run 'terminalsync config' to change tunnel or port settings.`;
     console.log(text);
 }
 const args = process.argv.slice(2);
