@@ -56,28 +56,23 @@ export default function TerminalView({
       term.textarea.setAttribute("autocomplete", "off");
     }
 
-    // Completely take over touch scrolling from xterm.
-    // xterm's built-in touch handler manipulates a hidden scrollTop div which
-    // is sluggish on mobile Safari. We intercept all touch events in the
-    // capture phase, stop them from reaching xterm, and scroll programmatically
-    // with momentum/inertia for a native feel.
-    const screenEl = term.element?.querySelector(".xterm-screen") as HTMLElement | null;
-    if (screenEl) {
-      let lastY = 0;
+    // Replace xterm's touch scrolling by monkey-patching the internal
+    // viewport methods. xterm's built-in handler manipulates a hidden
+    // scrollTop div which is sluggish on mobile Safari. We replace it
+    // with term.scrollLines() + momentum, and add alt-buffer key support.
+    const core = (term as any)._core;
+    const viewport = core?._viewport;
+    if (viewport) {
+      let lastTouchY = 0;
       let accum = 0;
       let velocity = 0;
       let lastTime = 0;
       let momentumRaf = 0;
-      const FRICTION = 0.92;
-      const MIN_VELOCITY = 0.5;
+      const FRICTION = 0.93;
+      const MIN_VELOCITY = 0.3;
 
-      const getCellHeight = (): number => {
-        const core = (term as any)._core;
-        return core?._renderService?.dimensions?.css?.cell?.height ?? 16;
-      };
-
-      const isAltBuffer = (): boolean =>
-        term.buffer.active.type !== "normal";
+      const getCellHeight = (): number =>
+        core?._renderService?.dimensions?.css?.cell?.height ?? 16;
 
       const scrollByPixels = (px: number) => {
         const cellH = getCellHeight();
@@ -86,14 +81,12 @@ export default function TerminalView({
         if (lines === 0) return;
         accum -= lines * cellH;
 
-        if (isAltBuffer()) {
-          // Alt buffer: send up/down key sequences
+        if (term.buffer.active.type !== "normal") {
           const seq = lines > 0 ? "\x1b[B" : "\x1b[A";
           for (let i = 0; i < Math.abs(lines); i++) {
             onData(seq);
           }
         } else {
-          // Normal buffer: use xterm's scrollLines API
           term.scrollLines(lines);
         }
       };
@@ -109,7 +102,6 @@ export default function TerminalView({
       const momentumStep = () => {
         velocity *= FRICTION;
         if (Math.abs(velocity) < MIN_VELOCITY) {
-          velocity = 0;
           momentumRaf = 0;
           return;
         }
@@ -117,48 +109,40 @@ export default function TerminalView({
         momentumRaf = requestAnimationFrame(momentumStep);
       };
 
-      const onStart = (e: TouchEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
+      // Override xterm's viewport touch methods directly
+      viewport.handleTouchStart = (ev: TouchEvent) => {
         stopMomentum();
-        lastY = e.touches[0].clientY;
+        lastTouchY = ev.touches[0].clientY;
         lastTime = Date.now();
         velocity = 0;
         accum = 0;
       };
 
-      const onMove = (e: TouchEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const y = e.touches[0].clientY;
+      viewport.handleTouchMove = (ev: TouchEvent): boolean => {
+        const y = ev.touches[0].clientY;
         const now = Date.now();
-        const dy = lastY - y; // positive = scrolling down (content moves up)
+        const dy = lastTouchY - y;
         const dt = Math.max(now - lastTime, 1);
 
-        // Exponential moving average for smooth velocity
-        const instantV = dy / dt * 16; // normalize to ~per-frame
+        const instantV = (dy / dt) * 16;
         velocity = velocity * 0.4 + instantV * 0.6;
 
-        lastY = y;
+        lastTouchY = y;
         lastTime = now;
 
         if (dy !== 0) scrollByPixels(dy);
+        return false; // tell xterm to preventDefault
       };
 
-      const onEnd = (e: TouchEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        // Kick off momentum if there's enough velocity
-        if (Math.abs(velocity) > MIN_VELOCITY) {
-          momentumRaf = requestAnimationFrame(momentumStep);
-        }
-      };
-
-      // Capture phase + stopPropagation prevents xterm's broken handlers from firing
-      screenEl.addEventListener("touchstart", onStart, { capture: true, passive: false });
-      screenEl.addEventListener("touchmove", onMove, { capture: true, passive: false });
-      screenEl.addEventListener("touchend", onEnd, { capture: true, passive: false });
-      screenEl.addEventListener("touchcancel", onEnd, { capture: true, passive: false });
+      // Add touchend listener for momentum (xterm doesn't have one)
+      const screenEl = term.element?.querySelector(".xterm-screen");
+      if (screenEl) {
+        screenEl.addEventListener("touchend", () => {
+          if (Math.abs(velocity) > MIN_VELOCITY) {
+            momentumRaf = requestAnimationFrame(momentumStep);
+          }
+        }, { passive: true });
+      }
     }
 
     // Apply size immediately if already known
