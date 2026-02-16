@@ -30,11 +30,7 @@ export default function App() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [attachedId, setAttachedId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [termSize, setTermSize] = useState<{
-    cols: number;
-    rows: number;
-  } | null>(null);
-
+  const [hostCols, setHostCols] = useState<number | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const seqRef = useRef(0);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -43,6 +39,10 @@ export default function App() {
   const switchingRef = useRef(false);
   const termRef = useRef<XTerm | null>(null);
   const attachedIdRef = useRef<string | null>(null);
+  // Tracks whether we've received "attached" on the CURRENT WS connection.
+  // Prevents sending resize/input to the server during reconnect when
+  // attachedIdRef still holds the old session ID for UI stability.
+  const wsAttachedRef = useRef(false);
   const pendingDataRef = useRef<Uint8Array[]>([]);
 
   useEffect(() => {
@@ -70,7 +70,7 @@ export default function App() {
         switchingRef.current = true;
         sendMsg({ type: "detach", payload: {} });
       }
-      // Send cols=0, rows=0 — we adopt the session's size
+      // Send cols=0, rows=0 — adopt the host's width, then send fitted rows
       sendMsg({
         type: "attach",
         payload: { target: id, cols: 0, rows: 0 },
@@ -98,9 +98,10 @@ export default function App() {
               break;
             }
           }
-          // Re-attach after reconnect
+          // Re-attach after reconnect (wsAttachedRef is false during reconnect
+          // even though attachedIdRef is kept for visual stability)
           const reattach = reattachRef.current;
-          if (reattach && !attachedIdRef.current) {
+          if (reattach && !wsAttachedRef.current) {
             const target = list.find((s) => s.id === reattach);
             if (target) {
               reattachRef.current = null;
@@ -110,10 +111,9 @@ export default function App() {
             // Session gone — clear cached state
             reattachRef.current = null;
             setAttachedId(null);
-            setTermSize(null);
           }
-          // Auto-attach to first session if only one exists
-          if (!auto && !reattach && !attachedIdRef.current && list.length === 1) {
+          // Auto-attach to first available session on load
+          if (!auto && !reattach && !wsAttachedRef.current && list.length >= 1) {
             attachTo(list[0].id);
           }
           break;
@@ -123,26 +123,43 @@ export default function App() {
           break;
         case "attached": {
           const target = msg.payload.target as string;
-          const cols = msg.payload.cols as number;
-          const rows = msg.payload.rows as number;
           const isReattach = reattachRef.current === target;
           reattachRef.current = null;
+          switchingRef.current = false;
+          wsAttachedRef.current = true;
           setAttachedId(target);
-          setTermSize({ cols, rows });
+          // Adopt the host's column width
+          const cols = msg.payload.cols as number;
+          if (cols > 0) setHostCols(cols);
           const term = termRef.current;
           if (term) {
             if (!isReattach) term.clear();
+            // Flush buffered data (buffered during session switch)
+            const pending = pendingDataRef.current;
+            if (pending.length > 0) {
+              for (const chunk of pending) {
+                term.write(chunk);
+              }
+              pendingDataRef.current = [];
+            }
             term.focus();
           }
           break;
         }
+        case "resized": {
+          // Host resized — adopt their new column width
+          const rCols = msg.payload.cols as number;
+          if (rCols > 0) setHostCols(rCols);
+          break;
+        }
         case "detached":
+          wsAttachedRef.current = false;
           if (switchingRef.current) {
             // Switching sessions — don't clear state (avoids terminal destroy/recreate)
-            switchingRef.current = false;
+            // Don't reset switchingRef here; it stays true so binary data is
+            // buffered until the attached handler processes the new session.
           } else {
             setAttachedId(null);
-            setTermSize(null);
           }
           listSessions();
           break;
@@ -173,7 +190,9 @@ export default function App() {
       ws.addEventListener("message", (evt) => {
         if (evt.data instanceof ArrayBuffer) {
           const data = new Uint8Array(evt.data);
-          if (termRef.current) {
+          // During session switch, buffer data until the attached handler
+          // clears the terminal — otherwise term.clear() wipes it.
+          if (termRef.current && !switchingRef.current) {
             termRef.current.write(data);
           } else {
             pendingDataRef.current.push(data);
@@ -186,6 +205,7 @@ export default function App() {
       ws.addEventListener("close", () => {
         setStatus("disconnected");
         wsRef.current = null;
+        wsAttachedRef.current = false;
         if (pollRef.current) {
           clearInterval(pollRef.current);
           pollRef.current = null;
@@ -234,11 +254,17 @@ export default function App() {
 
   const handleTermData = useCallback(
     (data: string) => {
-      if (
-        wsRef.current?.readyState === WebSocket.OPEN &&
-        attachedIdRef.current
-      ) {
+      if (wsRef.current?.readyState === WebSocket.OPEN && wsAttachedRef.current) {
         sendMsg({ type: "input", payload: { data } });
+      }
+    },
+    [sendMsg],
+  );
+
+  const handleTermResize = useCallback(
+    (cols: number, rows: number) => {
+      if (wsRef.current?.readyState === WebSocket.OPEN && wsAttachedRef.current) {
+        sendMsg({ type: "resize", payload: { cols, rows } });
       }
     },
     [sendMsg],
@@ -271,9 +297,9 @@ export default function App() {
         <button
           tabIndex={-1}
           onClick={() => setDrawerOpen(!drawerOpen)}
-          className="p-1.5 rounded-md hover:bg-white/5 transition-colors"
+          className="p-2.5 -m-1 rounded-md hover:bg-white/5 active:bg-white/10 transition-colors"
         >
-          <Menu size={18} className="text-zinc-400" />
+          <Menu size={20} className="text-zinc-400" />
         </button>
         <span className="text-sm font-medium text-zinc-300">
           TerminalSync
@@ -294,9 +320,10 @@ export default function App() {
       {/* Terminal */}
       <TerminalView
         attachedId={attachedId}
-        termSize={termSize}
         termRef={termRef}
+        hostCols={hostCols}
         onData={handleTermData}
+        onResize={handleTermResize}
         onReady={handleTermReady}
         connected={status === "connected"}
         sessionCount={sessions.length}

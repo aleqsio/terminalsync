@@ -1,6 +1,6 @@
 {
   "name": "terminalsync",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "bin": {
@@ -12,6 +12,8 @@
     "build:web": "cd web-ui && npm install && npm run build",
     "build": "npm run build:server && npm run build:web",
     "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "postinstall": "chmod +x node_modules/node-pty/prebuilds/darwin-*/spawn-helper 2>/dev/null || true"
   },
   "dependencies": {
@@ -25,6 +27,7 @@
     "@types/node": "^22.0.0",
     "@types/ws": "^8.5.0",
     "tsx": "^4.0.0",
-    "typescript": "^5.6.0"
+    "typescript": "^5.6.0",
+    "vitest": "^4.0.18"
   }
 }

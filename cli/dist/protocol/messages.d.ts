@@ -81,6 +81,14 @@ export interface DetachedResponse {
         message?: string;
     };
 }
+export interface ResizedResponse {
+    type: "resized";
+    seq: number;
+    payload: {
+        cols: number;
+        rows: number;
+    };
+}
 export interface ErrorResponse {
     type: "error";
     seq: number;
@@ -89,5 +97,5 @@ export interface ErrorResponse {
         message: string;
     };
 }
-export type ServerMessage = SessionListResponse | SessionCreatedResponse | AttachedResponse | DetachedResponse | ErrorResponse;
+export type ServerMessage = SessionListResponse | SessionCreatedResponse | AttachedResponse | ResizedResponse | DetachedResponse | ErrorResponse;
 export declare function parseClientMessage(data: string): ClientMessage;

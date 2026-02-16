@@ -21,13 +21,19 @@ export class TmuxProvider {
             return [];
         try {
             const tmuxSessions = await listSessions();
-            return tmuxSessions.map((s) => ({
-                id: `tmux:${s.sessionName}`,
-                name: s.sessionName,
-                status: "running",
-                attachedClients: s.sessionAttached,
-                source: "tmux",
-            }));
+            return tmuxSessions.map((s) => {
+                // Find the active pane's title from the active window
+                const activeWindow = s.windows.find(w => w.windowActive) ?? s.windows[0];
+                const activePane = activeWindow?.panes.find(p => p.paneActive) ?? activeWindow?.panes[0];
+                const title = activePane?.paneTitle || activeWindow?.windowName || s.sessionName;
+                return {
+                    id: `tmux:${s.sessionName}`,
+                    name: title,
+                    status: "running",
+                    attachedClients: s.sessionAttached,
+                    source: "tmux",
+                };
+            });
         }
         catch {
             return [];

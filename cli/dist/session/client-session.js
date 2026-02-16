@@ -11,6 +11,7 @@ export class ClientSession {
     attachedSession = null;
     dataListener = null;
     exitListener = null;
+    resizeListener = null;
     // When attached to a tmux session (legacy path)
     tmuxPty = null;
     attachedTarget = null;
@@ -148,10 +149,6 @@ export class ClientSession {
         this.attachedSession = session;
         session.attachClient(this.id);
         this.state = "ATTACHED";
-        // Owner sets the size; other clients adopt the session's size
-        if (session.isOwner(this.id)) {
-            session.resize(this.id, cols, rows);
-        }
         // Send buffered output so reconnecting clients see prior content
         const buffered = session.getBufferedOutput();
         if (buffered) {
@@ -176,9 +173,16 @@ export class ClientSession {
                 });
             }
         };
+        this.resizeListener = (cols, rows) => {
+            this.sendJSON({
+                type: "resized",
+                seq: 0,
+                payload: { cols, rows },
+            });
+        };
         session.on("data", this.dataListener);
         session.on("exit", this.exitListener);
-        // Tell the client the session's fixed size
+        session.on("resize", this.resizeListener);
         this.sendJSON({
             type: "attached",
             seq,
@@ -256,7 +260,7 @@ export class ClientSession {
             return;
         }
         if (this.attachedSession) {
-            this.attachedSession.resize(this.id, cols, rows);
+            this.attachedSession.resize(cols, rows);
         }
         else if (this.tmuxPty) {
             this.tmuxPty.resize(cols, rows);
@@ -291,14 +295,15 @@ export class ClientSession {
             if (this.exitListener) {
                 this.attachedSession.removeListener("exit", this.exitListener);
             }
-            const ownerLeft = this.attachedSession.detachClient(this.id);
-            if (ownerLeft) {
-                this.store.remove(this.attachedSession.id);
+            if (this.resizeListener) {
+                this.attachedSession.removeListener("resize", this.resizeListener);
             }
+            this.attachedSession.detachClient(this.id);
         }
         this.attachedSession = null;
         this.dataListener = null;
         this.exitListener = null;
+        this.resizeListener = null;
         this.state = "BROWSING";
     }
     detachFromTmux() {

@@ -1,12 +1,14 @@
 import { useEffect, useRef, useCallback, type MutableRefObject } from "react";
 import { Terminal } from "@xterm/xterm";
+import { FitAddon } from "@xterm/addon-fit";
 import { ChevronUp, ChevronDown, ArrowLeftToLine, CornerDownLeft, Minus } from "lucide-react";
 
 interface TerminalViewProps {
   attachedId: string | null;
-  termSize: { cols: number; rows: number } | null;
   termRef: MutableRefObject<Terminal | null>;
+  hostCols: number | null;
   onData: (data: string) => void;
+  onResize: (cols: number, rows: number) => void;
   onReady: () => void;
   connected: boolean;
   sessionCount: number;
@@ -14,9 +16,10 @@ interface TerminalViewProps {
 
 export default function TerminalView({
   attachedId,
-  termSize,
   termRef,
+  hostCols,
   onData,
+  onResize,
   onReady,
   connected,
   sessionCount,
@@ -24,6 +27,8 @@ export default function TerminalView({
   const containerRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const initRef = useRef(false);
+  const hostColsRef = useRef<number | null>(hostCols);
+  const fitAddonRef = useRef<FitAddon | null>(null);
 
   const showTerminal = attachedId !== null;
 
@@ -44,10 +49,31 @@ export default function TerminalView({
         selectionBackground: "#6366f140",
       },
       scrollback: 5000,
+      cols: 80,
+      rows: 24,
     });
+
+    const fitAddon = new FitAddon();
+    fitAddonRef.current = fitAddon;
+    term.loadAddon(fitAddon);
     term.open(containerRef.current);
     termRef.current = term;
     term.onData(onData);
+
+    // Fit rows to container height, keep host's cols for width (horizontal scroll)
+    const fitRows = () => {
+      const dims = fitAddon.proposeDimensions();
+      if (!dims) return;
+      const cols = hostColsRef.current || dims.cols;
+      const rows = dims.rows;
+      if (cols !== term.cols || rows !== term.rows) {
+        term.resize(cols, rows);
+      }
+      onResize(cols, rows);
+    };
+    fitRows();
+    const resizeObs = new ResizeObserver(() => fitRows());
+    resizeObs.observe(containerRef.current);
 
     // Suppress Safari's form accessory bar
     if (term.textarea) {
@@ -58,9 +84,7 @@ export default function TerminalView({
     }
 
     // xterm 6.x has built-in Gesture-based touch scrolling with inertia.
-    // We add two things on top:
-    // 1. Alt-buffer support: intercept gesture events → arrow key sequences
-    // 2. Horizontal scrolling: track raw touch events → update wrapper scrollLeft
+    // We add alt-buffer support: intercept gesture events → arrow key sequences
     const screenEl = term.screenElement;
     if (screenEl) {
       const core = (term as any)._core;
@@ -96,44 +120,28 @@ export default function TerminalView({
         }
       }) as EventListener);
 
-      // Horizontal scrolling via raw touch events.
-      // xterm's Gesture class handles vertical; we handle horizontal on
-      // the overflow-x-auto wrapper. touch-action:none blocks native scroll.
-      let lastTouchX: number | null = null;
-      const getHScrollEl = (): HTMLElement | null =>
-        containerRef.current?.parentElement ?? null;
-
-      screenEl.addEventListener("touchstart", (e: TouchEvent) => {
-        lastTouchX = e.touches[0].clientX;
+      // Tap to focus — open keyboard on iOS (must be on touchend in the
+      // same gesture to count as a user-initiated focus for iOS Safari)
+      screenEl.addEventListener("touchend", () => {
+        term.focus();
       }, { passive: true });
 
-      screenEl.addEventListener("touchmove", (e: TouchEvent) => {
-        if (lastTouchX !== null) {
-          const x = e.touches[0].clientX;
-          const dx = lastTouchX - x;
-          lastTouchX = x;
-          if (dx !== 0) {
-            const el = getHScrollEl();
-            if (el) el.scrollLeft += dx;
-          }
+      // Enable horizontal touch scrolling on the wrapper
+      let startX = 0;
+      let startScrollLeft = 0;
+      screenEl.addEventListener("touchstart", (e) => {
+        if (e.touches.length === 1) {
+          startX = e.touches[0].clientX;
+          startScrollLeft = wrapperRef.current?.scrollLeft ?? 0;
         }
       }, { passive: true });
-
-      screenEl.addEventListener("touchend", () => {
-        lastTouchX = null;
+      screenEl.addEventListener("touchmove", (e) => {
+        if (e.touches.length === 1 && wrapperRef.current) {
+          const dx = startX - e.touches[0].clientX;
+          wrapperRef.current.scrollLeft = startScrollLeft + dx;
+        }
       }, { passive: true });
     }
-
-    // Pin the wrapper's vertical scroll to the bottom so the cursor row
-    // is always visible when the terminal is taller than the viewport.
-    const pinToBottom = () => {
-      const w = wrapperRef.current;
-      if (w) w.scrollTop = w.scrollHeight;
-    };
-    pinToBottom();
-    // Re-pin whenever the terminal renders new content
-    const resizeObs = new ResizeObserver(pinToBottom);
-    if (term.element) resizeObs.observe(term.element);
 
     // Flush any buffered data that arrived before the terminal was ready
     onReady();
@@ -144,31 +152,33 @@ export default function TerminalView({
       termRef.current = null;
       initRef.current = false;
     };
-    // termSize intentionally excluded — the resize effect handles size changes.
-    // Including it here would destroy & recreate the terminal on every resize.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showTerminal, termRef, onData, onReady]);
 
-  // Resize terminal to match server's PTY dimensions
+  // When host cols arrive/change, refit with host width
   useEffect(() => {
+    hostColsRef.current = hostCols;
     const term = termRef.current;
-    if (term && termSize && termSize.cols > 0 && termSize.rows > 0) {
-      term.resize(termSize.cols, termSize.rows);
-      // Re-pin scroll to bottom after resize
-      const w = wrapperRef.current;
-      if (w) w.scrollTop = w.scrollHeight;
+    const fitAddon = fitAddonRef.current;
+    if (!term || !fitAddon || !hostCols) return;
+    const dims = fitAddon.proposeDimensions();
+    if (!dims) return;
+    const rows = dims.rows;
+    if (hostCols !== term.cols || rows !== term.rows) {
+      term.resize(hostCols, rows);
     }
-  }, [termSize, termRef]);
+    onResize(hostCols, rows);
+  }, [hostCols, termRef, onResize]);
 
   const sendKey = useCallback(
     (seq: string) => {
       onData(seq);
-      termRef.current?.focus();
     },
-    [onData, termRef],
+    [onData],
   );
 
   const keys: { label: string; icon: React.ReactNode; seq: string }[] = [
+    { label: "Enter", icon: <CornerDownLeft size={14} />, seq: "\r" },
     { label: "Tab", icon: <ArrowLeftToLine size={14} />, seq: "\t" },
     { label: "S-Tab", icon: <span className="text-[10px] font-mono leading-none">S-Tab</span>, seq: "\x1b[Z" },
     { label: "Up", icon: <ChevronUp size={14} />, seq: "\x1b[A" },
@@ -181,12 +191,12 @@ export default function TerminalView({
 
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden" style={{ background: "var(--bg)" }}>
-      <div ref={wrapperRef} className="flex-1 min-h-0 overflow-x-auto overflow-y-auto relative">
+      <div ref={wrapperRef} className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden relative">
         <div
           ref={containerRef}
-          className="inline-block min-w-full p-1"
+          className="w-full h-full"
           style={{
-            display: showTerminal ? "inline-block" : "none",
+            display: showTerminal ? "block" : "none",
           }}
         />
         {!showTerminal && (

@@ -3,14 +3,14 @@ import * as pty from "node-pty";
 const DEFAULT_BUFFER_SIZE = 200 * 1024; // 200KB
 export class ManagedSession extends EventEmitter {
     id;
-    name;
+    _name;
     source;
+    get name() { return this._name; }
     ptyProcess;
     ringBuffer = [];
     ringBufferBytes = 0;
     maxBufferBytes;
     attachedClients = new Set();
-    ownerId = null;
     _cols;
     _rows;
     exited = false;
@@ -18,7 +18,7 @@ export class ManagedSession extends EventEmitter {
     constructor(opts) {
         super();
         this.id = opts.id ?? crypto.randomUUID();
-        this.name = opts.name;
+        this._name = opts.name;
         this.source = opts.source ?? "managed";
         this.maxBufferBytes = opts.bufferSize ?? DEFAULT_BUFFER_SIZE;
         this._cols = opts.cols;
@@ -36,6 +36,11 @@ export class ManagedSession extends EventEmitter {
         });
         this.ptyProcess.onData((data) => {
             this.pushToBuffer(data);
+            const title = this.extractTitle(data);
+            if (title && title !== this._name) {
+                this._name = title;
+                this.emit("title", title);
+            }
             this.emit("data", data);
         });
         this.ptyProcess.onExit(({ exitCode }) => {
@@ -43,6 +48,11 @@ export class ManagedSession extends EventEmitter {
             this.exitCode = exitCode;
             this.emit("exit", exitCode);
         });
+    }
+    extractTitle(data) {
+        // Match OSC 0 or 2 title sequences: \x1b]N;title\x07 or \x1b]N;title\x1b\\
+        const match = data.match(/\x1b\](?:0|2);([^\x07\x1b]*?)(?:\x07|\x1b\\)/);
+        return match ? match[1] : null;
     }
     pushToBuffer(data) {
         const byteLen = Buffer.byteLength(data);
@@ -63,29 +73,23 @@ export class ManagedSession extends EventEmitter {
     }
     get cols() { return this._cols; }
     get rows() { return this._rows; }
-    resize(clientId, cols, rows) {
-        if (this.exited || clientId !== this.ownerId)
-            return;
-        this._cols = cols;
-        this._rows = rows;
-        this.ptyProcess.resize(cols, rows);
-    }
     attachClient(clientId) {
-        if (this.attachedClients.size === 0) {
-            this.ownerId = clientId;
-        }
         this.attachedClients.add(clientId);
     }
     detachClient(clientId) {
         this.attachedClients.delete(clientId);
-        if (clientId === this.ownerId) {
-            this.ownerId = null;
-            return true; // owner left
-        }
-        return false;
     }
-    isOwner(clientId) {
-        return clientId === this.ownerId;
+    resize(cols, rows) {
+        if (cols <= 0 || rows <= 0)
+            return;
+        if (cols === this._cols && rows === this._rows)
+            return;
+        this._cols = cols;
+        this._rows = rows;
+        if (!this.exited) {
+            this.ptyProcess.resize(cols, rows);
+        }
+        this.emit("resize", cols, rows);
     }
     getAttachedClients() {
         return Array.from(this.attachedClients);

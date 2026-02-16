@@ -12,6 +12,7 @@ export declare class ClientSession {
     private attachedSession;
     private dataListener;
     private exitListener;
+    private resizeListener;
     private tmuxPty;
     private attachedTarget;
     constructor(ws: WebSocket, config: Config, store: ManagedSessionStore, tmux: TmuxProvider);
