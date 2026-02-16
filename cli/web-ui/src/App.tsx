@@ -134,6 +134,10 @@ export default function App() {
           const term = termRef.current;
           if (term) {
             if (!isReattach) term.clear();
+            // Resize terminal immediately so incoming data renders at correct width
+            if (cols > 0 && cols !== term.cols) {
+              term.resize(cols, term.rows);
+            }
             // Flush buffered data (buffered during session switch)
             const pending = pendingDataRef.current;
             if (pending.length > 0) {
