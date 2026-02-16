@@ -8,7 +8,6 @@ interface TerminalViewProps {
   termRef: MutableRefObject<Terminal | null>;
   hostCols: number | null;
   onData: (data: string) => void;
-  onResize: (cols: number, rows: number) => void;
   onReady: () => void;
   connected: boolean;
   sessionCount: number;
@@ -19,7 +18,6 @@ export default function TerminalView({
   termRef,
   hostCols,
   onData,
-  onResize,
   onReady,
   connected,
   sessionCount,
@@ -65,19 +63,15 @@ export default function TerminalView({
     term.onData(onData);
 
     // Fit rows to container height, keep host's cols for width (horizontal scroll).
-    // Only send resize to server when we have hostCols — otherwise we'd shrink
-    // the PTY to the narrow mobile screen width before the host width arrives.
+    // Never send resize to the server — web client is read-only for terminal size.
     const fitRows = () => {
       const dims = fitAddon.proposeDimensions();
       if (!dims) return;
-      const hCols = hostColsRef.current;
-      const cols = hCols || dims.cols;
+      const cols = hostColsRef.current || dims.cols;
       const rows = dims.rows;
       if (cols !== term.cols || rows !== term.rows) {
         term.resize(cols, rows);
       }
-      // Only notify server when we know the host width
-      if (hCols) onResize(cols, rows);
     };
     fitRows();
     // Reveal after initial fit
@@ -195,8 +189,7 @@ export default function TerminalView({
     if (hostCols !== term.cols || rows !== term.rows) {
       term.resize(hostCols, rows);
     }
-    onResize(hostCols, rows);
-  }, [hostCols, termRef, onResize]);
+  }, [hostCols, termRef]);
 
   const sendKey = useCallback(
     (seq: string) => {

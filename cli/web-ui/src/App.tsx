@@ -261,15 +261,6 @@ export default function App() {
     [sendMsg],
   );
 
-  const handleTermResize = useCallback(
-    (cols: number, rows: number) => {
-      if (wsRef.current?.readyState === WebSocket.OPEN && wsAttachedRef.current) {
-        sendMsg({ type: "resize", payload: { cols, rows } });
-      }
-    },
-    [sendMsg],
-  );
-
   const handleTermReady = useCallback(() => {
     const pending = pendingDataRef.current;
     if (pending.length > 0 && termRef.current) {
@@ -323,7 +314,6 @@ export default function App() {
         termRef={termRef}
         hostCols={hostCols}
         onData={handleTermData}
-        onResize={handleTermResize}
         onReady={handleTermReady}
         connected={status === "connected"}
         sessionCount={sessions.length}
