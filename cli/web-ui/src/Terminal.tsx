@@ -221,6 +221,7 @@ export default function TerminalView({
           className="w-full h-full"
           style={{
             display: showTerminal ? "block" : "none",
+            background: "#0a0a0f",
           }}
         />
         {!showTerminal && (
