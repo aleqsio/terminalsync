@@ -3,7 +3,7 @@ import { hostname, homedir, networkInterfaces } from "os";
 import { readFileSync, writeFileSync, openSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
-import { spawn, execFileSync, type ChildProcess } from "child_process";
+import { spawn, execFileSync } from "child_process";
 import http from "http";
 import https from "https";
 import WebSocket from "ws";
