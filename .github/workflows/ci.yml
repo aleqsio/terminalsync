@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  typecheck-and-test:
+    name: TypeScript Check & Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: cli/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('cli/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies
+        working-directory: cli
+        run: npm ci
+
+      - name: TypeScript type check
+        working-directory: cli
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        working-directory: cli
+        run: npx vitest run
