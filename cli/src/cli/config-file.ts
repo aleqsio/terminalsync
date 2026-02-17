@@ -2,6 +2,8 @@ import { randomBytes } from "crypto";
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
+import { loadSharedConfig } from "../shared-config.js";
+import type { Config } from "../config.js";
 
 export function ensureConfigFile(): string {
   const tsDir = join(homedir(), ".terminalsync");
@@ -17,6 +19,10 @@ export function ensureConfigFile(): string {
   return configPath;
 }
 
+/**
+ * Returns the raw key=value pairs from ~/.terminalsync/config (creating the
+ * file with a generated token if it does not exist yet).
+ */
 export function loadConfigFile(): Record<string, string> {
   const configPath = ensureConfigFile();
   const contents = readFileSync(configPath, "utf-8");
@@ -29,6 +35,15 @@ export function loadConfigFile(): Record<string, string> {
     vars[trimmed.slice(0, eq)] = trimmed.slice(eq + 1);
   }
   return vars;
+}
+
+/**
+ * Load the merged config (file + env vars, env wins) using the shared helper.
+ * Guarantees the config file exists (creates it with a fresh token if needed).
+ */
+export function loadClientConfig(): Config {
+  ensureConfigFile();
+  return loadSharedConfig();
 }
 
 export function setConfigValue(key: string, value: string): void {
