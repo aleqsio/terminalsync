@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { hostname, homedir, networkInterfaces } from "os";
-import { randomBytes } from "crypto";
-import { readFileSync, writeFileSync, mkdirSync, openSync, existsSync } from "fs";
+import { readFileSync, writeFileSync, openSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { spawn, execFileSync, type ChildProcess } from "child_process";
@@ -10,91 +9,19 @@ import https from "https";
 import WebSocket from "ws";
 import qrcode from "qrcode-terminal";
 import * as p from "@clack/prompts";
+import { loadConfigFile, setConfigValue } from "./config-file.js";
+import { send, die, openWs } from "./ws-client.js";
 
 // --- Config (env vars with config-file fallback) ---
-
-function ensureConfigFile(): string {
-  const tsDir = join(homedir(), ".terminalsync");
-  const configPath = join(tsDir, "config");
-  if (!existsSync(configPath)) {
-    mkdirSync(tsDir, { recursive: true });
-    const genToken = randomBytes(32).toString("hex");
-    writeFileSync(
-      configPath,
-      `TERMINALSYNC_TOKEN=${genToken}\nTERMINALSYNC_HOST=0.0.0.0\nTERMINALSYNC_PORT=8089\nTERMINALSYNC_TUNNEL=true\n`
-    );
-  }
-  return configPath;
-}
-
-function loadConfigFile(): Record<string, string> {
-  const configPath = ensureConfigFile();
-  const contents = readFileSync(configPath, "utf-8");
-  const vars: Record<string, string> = {};
-  for (const line of contents.split("\n")) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-    const eq = trimmed.indexOf("=");
-    if (eq === -1) continue;
-    vars[trimmed.slice(0, eq)] = trimmed.slice(eq + 1);
-  }
-  return vars;
-}
-
-function setConfigValue(key: string, value: string): void {
-  const configPath = ensureConfigFile();
-  const contents = readFileSync(configPath, "utf-8");
-  const lines = contents.split("\n");
-  let found = false;
-  const updated = lines.map((line) => {
-    const trimmed = line.trim();
-    if (trimmed.startsWith(key + "=")) {
-      found = true;
-      return `${key}=${value}`;
-    }
-    return line;
-  });
-  if (!found) {
-    // Append before trailing empty line if present
-    if (updated.length > 0 && updated[updated.length - 1] === "") {
-      updated.splice(updated.length - 1, 0, `${key}=${value}`);
-    } else {
-      updated.push(`${key}=${value}`);
-    }
-  }
-  writeFileSync(configPath, updated.join("\n"));
-}
 
 const fileConfig = loadConfigFile();
 const host = process.env.TERMINALSYNC_HOST ?? fileConfig.TERMINALSYNC_HOST ?? "0.0.0.0";
 const port = process.env.TERMINALSYNC_PORT ?? fileConfig.TERMINALSYNC_PORT ?? "8089";
 const token = process.env.TERMINALSYNC_TOKEN ?? fileConfig.TERMINALSYNC_TOKEN;
 const tunnelEnabled = (process.env.TERMINALSYNC_TUNNEL ?? fileConfig.TERMINALSYNC_TUNNEL ?? "true") === "true";
-// Dead feature flag — when enabled, cmdConnect() would use buildDeepLink() for native app URLs
-const _appDeeplinkEnabled = (process.env.TERMINALSYNC_APP_DEEPLINK ?? fileConfig.TERMINALSYNC_APP_DEEPLINK ?? "false") === "true";
 
 function wsUrl(): string {
   return `ws://${host}:${port}`;
-}
-
-// --- Helpers ---
-
-let seq = 0;
-function send(ws: WebSocket, msg: Record<string, unknown>): void {
-  ws.send(JSON.stringify({ ...msg, seq: ++seq }));
-}
-
-function die(msg: string): never {
-  process.stderr.write(msg + "\n");
-  process.exit(1);
-}
-
-function openWs(): WebSocket {
-  if (!token) die("TERMINALSYNC_TOKEN is required");
-  const ws = new WebSocket(wsUrl(), {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  return ws;
 }
 
 // --- Auto-start server ---
@@ -207,7 +134,7 @@ async function ensureServer(): Promise<boolean> {
 
 async function cmdList(): Promise<void> {
   if (!(await ensureServer())) die("Cannot reach server");
-  const ws = openWs();
+  const ws = openWs(wsUrl(), token);
 
   ws.on("open", () => {
     send(ws, { type: "list_sessions", payload: {} });
@@ -245,7 +172,7 @@ async function cmdList(): Promise<void> {
 
 async function cmdAttach(targetId: string): Promise<void> {
   if (!(await ensureServer())) die("Cannot reach server");
-  const ws = openWs();
+  const ws = openWs(wsUrl(), token);
   const cols = process.stdout.columns || 80;
   const rows = process.stdout.rows || 24;
   const pendingOutput: Buffer[] = [];
@@ -292,7 +219,7 @@ async function cmdShare(): Promise<void> {
   if (process.env.TERMINALSYNC_SESSION) return;
   checkForUpdate();
   if (!(await ensureServer())) fallbackShell();
-  const ws = openWs();
+  const ws = openWs(wsUrl(), token);
   const cols = process.stdout.columns || 80;
   const rows = process.stdout.rows || 24;
   const name = hostname();
@@ -441,19 +368,6 @@ function getLanIp(): string {
     }
   }
   return host; // fall back to configured host
-}
-
-function buildDeepLink(opts: { sessionId?: string; tunnelUrl?: string; lanHost?: string }): string {
-  const sessionPath = opts.sessionId ? `/terminal/${opts.sessionId}` : "";
-  const params = new URLSearchParams();
-  if (opts.tunnelUrl) {
-    params.set("url", opts.tunnelUrl);
-  } else if (opts.lanHost) {
-    params.set("host", opts.lanHost);
-    params.set("port", port);
-  }
-  params.set("token", token!);
-  return `terminalsync:/${sessionPath}?${params.toString()}`;
 }
 
 function buildWebUrl(opts: { sessionId?: string; tunnelUrl?: string; lanHost?: string }): string {
