@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { readFileSync, existsSync } from "node:fs";
-import { resolve, dirname, extname, normalize, join } from "node:path";
+import { resolve, dirname, extname, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { WebSocketServer, type WebSocket } from "ws";
 import { timingSafeEqual } from "node:crypto";
